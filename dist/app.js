@@ -65,7 +65,7 @@ async function fetchAll() {
     supabase.from("menu_items").select("*"),
     supabase.from("tables").select("*"),
     supabase.from("orders").select("*").order("created_at"),
-    supabase.from("order_items").select("*"),
+    supabase.from("order_items").select("*").order("id"),
     supabase.from("app_state").select("*").eq("id", 1)
   ]);
   const err = e1 || e2 || e3 || e4 || e5 || e6;
@@ -195,10 +195,17 @@ async function runAction(action, state) {
       const order = state.orders.find((o) => o.id === action.orderId);
       const item = order?.items[action.index];
       if (!item) return;
+      const delta = item.qty - action.qty;
       if (action.qty <= 0) {
         await supabase.from("order_items").delete().eq("order_id", action.orderId).eq("menu_id", item.menuId);
       } else {
         await supabase.from("order_items").update({ qty: action.qty }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      }
+      if (delta !== 0) {
+        const menuItem = state.menu.find((m) => m.id === item.menuId);
+        if (menuItem) {
+          await supabase.from("menu_items").update({ stock: Math.max(0, menuItem.stock + delta) }).eq("id", item.menuId);
+        }
       }
       return;
     }
@@ -230,6 +237,15 @@ async function runAction(action, state) {
       return;
     }
     case "DISMISS_ORDER": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      if (order) {
+        for (const it of order.items) {
+          const menuItem = state.menu.find((m) => m.id === it.menuId);
+          if (menuItem) {
+            await supabase.from("menu_items").update({ stock: menuItem.stock + it.qty }).eq("id", it.menuId);
+          }
+        }
+      }
       await supabase.from("orders").delete().eq("id", action.orderId);
       if (state.activeOrderId === action.orderId) {
         await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
