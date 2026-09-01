@@ -1,5 +1,10 @@
+// js/jsxDevShim.js
+import { jsx, Fragment } from "react/jsx-runtime";
+function jsxDEV(type, props, key) {
+  return jsx(type, props, key);
+}
+
 // js/app.jsx
-import { jsxDEV as jsxDEV6 } from "react/jsx-dev-runtime";
 import { useEffect as useEffect3, useState as useState5 } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -36,7 +41,7 @@ var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // js/store.js
-import { jsxDEV } from "react/jsx-dev-runtime";
+import { jsx as jsx2 } from "react/jsx-runtime";
 var LOW_STOCK = 5;
 var EMPTY_STATE = {
   staff: [],
@@ -266,11 +271,7 @@ function StoreProvider({ children }) {
     });
   }, []);
   const api = useMemo(() => ({ state, dispatch }), [state]);
-  return /* @__PURE__ */ jsxDEV(StoreContext.Provider, { value: api, children }, void 0, false, {
-    fileName: "js/store.js",
-    lineNumber: 320,
-    columnNumber: 10
-  }, this);
+  return /* @__PURE__ */ jsx2(StoreContext.Provider, { value: api, children });
 }
 function useStore() {
   return useContext(StoreContext);
@@ -290,7 +291,6 @@ function useKitchenOrders(state) {
 }
 
 // js/views/floorplan.jsx
-import { jsxDEV as jsxDEV2 } from "react/jsx-dev-runtime";
 function tableStatus(order) {
   if (!order || order.paid) return "available";
   if (order.billRequested || order.status === "served") return "bill";
@@ -318,15 +318,15 @@ function FloorPlanView({ setView }) {
     }
     setView("register");
   };
-  return /* @__PURE__ */ jsxDEV2("div", { className: "floorplan", children: [
-    /* @__PURE__ */ jsxDEV2("div", { className: "view-head", children: [
-      /* @__PURE__ */ jsxDEV2("div", { children: [
-        /* @__PURE__ */ jsxDEV2("h1", { children: "Floor Plan" }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("div", { className: "floorplan", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: [
+      /* @__PURE__ */ jsxDEV("div", { children: [
+        /* @__PURE__ */ jsxDEV("h1", { children: "Floor Plan" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 39,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV2("p", { className: "hint", children: "Tap a table to open or join its order." }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("p", { className: "hint", children: "Tap a table to open or join its order." }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 40,
           columnNumber: 11
@@ -336,9 +336,9 @@ function FloorPlanView({ setView }) {
         lineNumber: 38,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV2("div", { className: "legend", children: [
-        /* @__PURE__ */ jsxDEV2("span", { className: "lg", children: [
-          /* @__PURE__ */ jsxDEV2("i", { className: "dot avail" }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("div", { className: "legend", children: [
+        /* @__PURE__ */ jsxDEV("span", { className: "lg", children: [
+          /* @__PURE__ */ jsxDEV("i", { className: "dot avail" }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 43,
             columnNumber: 32
@@ -349,8 +349,8 @@ function FloorPlanView({ setView }) {
           lineNumber: 43,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV2("span", { className: "lg", children: [
-          /* @__PURE__ */ jsxDEV2("i", { className: "dot occ" }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { className: "lg", children: [
+          /* @__PURE__ */ jsxDEV("i", { className: "dot occ" }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 44,
             columnNumber: 32
@@ -361,8 +361,8 @@ function FloorPlanView({ setView }) {
           lineNumber: 44,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV2("span", { className: "lg", children: [
-          /* @__PURE__ */ jsxDEV2("i", { className: "dot bill" }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { className: "lg", children: [
+          /* @__PURE__ */ jsxDEV("i", { className: "dot bill" }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 45,
             columnNumber: 32
@@ -383,17 +383,17 @@ function FloorPlanView({ setView }) {
       lineNumber: 37,
       columnNumber: 7
     }, this),
-    zones.map((zone) => /* @__PURE__ */ jsxDEV2("section", { className: "zone", children: [
-      /* @__PURE__ */ jsxDEV2("h2", { className: "zone-title", children: zone }, void 0, false, {
+    zones.map((zone) => /* @__PURE__ */ jsxDEV("section", { className: "zone", children: [
+      /* @__PURE__ */ jsxDEV("h2", { className: "zone-title", children: zone }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 51,
         columnNumber: 11
       }, this),
-      /* @__PURE__ */ jsxDEV2("div", { className: "table-grid", children: state.tables.filter((t) => t.zone === zone).map((table) => {
+      /* @__PURE__ */ jsxDEV("div", { className: "table-grid", children: state.tables.filter((t) => t.zone === zone).map((table) => {
         const order = ordersByTable[table.id];
         const status = tableStatus(order);
-        return /* @__PURE__ */ jsxDEV2("button", { className: `table-card ${status}`, onClick: () => handleTable(table), children: [
-          /* @__PURE__ */ jsxDEV2("span", { className: "table-shape", children: Array.from({ length: table.capacity }).map((_, i) => /* @__PURE__ */ jsxDEV2("i", {}, i, false, {
+        return /* @__PURE__ */ jsxDEV("button", { className: `table-card ${status}`, onClick: () => handleTable(table), children: [
+          /* @__PURE__ */ jsxDEV("span", { className: "table-shape", children: Array.from({ length: table.capacity }).map((_, i) => /* @__PURE__ */ jsxDEV("i", {}, i, false, {
             fileName: "<stdin>",
             lineNumber: 62,
             columnNumber: 25
@@ -402,12 +402,12 @@ function FloorPlanView({ setView }) {
             lineNumber: 60,
             columnNumber: 21
           }, this),
-          /* @__PURE__ */ jsxDEV2("span", { className: "table-name", children: table.name }, void 0, false, {
+          /* @__PURE__ */ jsxDEV("span", { className: "table-name", children: table.name }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 65,
             columnNumber: 21
           }, this),
-          /* @__PURE__ */ jsxDEV2("span", { className: "table-status", children: statusString(order) }, void 0, false, {
+          /* @__PURE__ */ jsxDEV("span", { className: "table-status", children: statusString(order) }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 66,
             columnNumber: 21
@@ -435,7 +435,6 @@ function FloorPlanView({ setView }) {
 }
 
 // js/views/register.jsx
-import { Fragment, jsxDEV as jsxDEV3 } from "react/jsx-dev-runtime";
 import { useMemo as useMemo2, useState as useState2 } from "react";
 import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt } from "lucide-react";
 
@@ -491,14 +490,14 @@ function RegisterView() {
   const menuInStock = state.menu.filter((m) => m.category === activeCat && m.stock > 0);
   void menuInStock;
   const subtitle = order ? `${table?.name || "Unassigned"} \xB7 taken by ${order.staff}` : "Select a table from the Floor Plan to start";
-  return /* @__PURE__ */ jsxDEV3("div", { className: "register", children: [
-    /* @__PURE__ */ jsxDEV3("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV3("div", { children: [
-      /* @__PURE__ */ jsxDEV3("h1", { children: "Register" }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("div", { className: "register", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
+      /* @__PURE__ */ jsxDEV("h1", { children: "Register" }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 40,
         columnNumber: 11
       }, this),
-      /* @__PURE__ */ jsxDEV3("p", { className: "hint", children: subtitle }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("p", { className: "hint", children: subtitle }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 41,
         columnNumber: 11
@@ -512,9 +511,9 @@ function RegisterView() {
       lineNumber: 38,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV3("div", { className: "register-body", children: [
-      /* @__PURE__ */ jsxDEV3("div", { className: "menu-pane", children: [
-        /* @__PURE__ */ jsxDEV3("div", { className: "cat-tabs", children: state.categories.map((c) => /* @__PURE__ */ jsxDEV3(
+    /* @__PURE__ */ jsxDEV("div", { className: "register-body", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "menu-pane", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "cat-tabs", children: state.categories.map((c) => /* @__PURE__ */ jsxDEV(
           "button",
           {
             className: `cat-tab ${activeCat === c ? "active" : ""}`,
@@ -534,13 +533,13 @@ function RegisterView() {
           lineNumber: 47,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV3("div", { className: "search", children: [
-          /* @__PURE__ */ jsxDEV3(Search, { size: 16 }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("div", { className: "search", children: [
+          /* @__PURE__ */ jsxDEV(Search, { size: 16 }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 60,
             columnNumber: 13
           }, this),
-          /* @__PURE__ */ jsxDEV3(
+          /* @__PURE__ */ jsxDEV(
             "input",
             {
               placeholder: "Search items\u2026 e.g. pizza",
@@ -561,10 +560,10 @@ function RegisterView() {
           lineNumber: 59,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV3("div", { className: "menu-grid", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "menu-grid", children: [
           items.map((m) => {
             const stock = stockLabel(m);
-            return /* @__PURE__ */ jsxDEV3(
+            return /* @__PURE__ */ jsxDEV(
               "button",
               {
                 className: `menu-item ${stock?.cls || ""}`,
@@ -575,12 +574,12 @@ function RegisterView() {
                   }
                 },
                 children: [
-                  /* @__PURE__ */ jsxDEV3("span", { className: "mi-name", children: m.name }, void 0, false, {
+                  /* @__PURE__ */ jsxDEV("span", { className: "mi-name", children: m.name }, void 0, false, {
                     fileName: "<stdin>",
                     lineNumber: 82,
                     columnNumber: 19
                   }, this),
-                  /* @__PURE__ */ jsxDEV3("span", { className: "mi-price", children: [
+                  /* @__PURE__ */ jsxDEV("span", { className: "mi-price", children: [
                     "$",
                     m.price.toFixed(2)
                   ] }, void 0, true, {
@@ -588,8 +587,8 @@ function RegisterView() {
                     lineNumber: 83,
                     columnNumber: 19
                   }, this),
-                  /* @__PURE__ */ jsxDEV3("span", { className: "mi-stock", children: m.stock <= 0 ? /* @__PURE__ */ jsxDEV3(Fragment, { children: [
-                    /* @__PURE__ */ jsxDEV3(PackageX, { size: 13 }, void 0, false, {
+                  /* @__PURE__ */ jsxDEV("span", { className: "mi-stock", children: m.stock <= 0 ? /* @__PURE__ */ jsxDEV(Fragment, { children: [
+                    /* @__PURE__ */ jsxDEV(PackageX, { size: 13 }, void 0, false, {
                       fileName: "<stdin>",
                       lineNumber: 87,
                       columnNumber: 25
@@ -599,7 +598,7 @@ function RegisterView() {
                     fileName: "<stdin>",
                     lineNumber: 86,
                     columnNumber: 23
-                  }, this) : stock ? /* @__PURE__ */ jsxDEV3(Fragment, { children: [
+                  }, this) : stock ? /* @__PURE__ */ jsxDEV(Fragment, { children: [
                     stock.text,
                     " (",
                     m.stock,
@@ -625,7 +624,7 @@ function RegisterView() {
               this
             );
           }),
-          items.length === 0 && /* @__PURE__ */ jsxDEV3("p", { className: "empty", children: "No items in this category." }, void 0, false, {
+          items.length === 0 && /* @__PURE__ */ jsxDEV("p", { className: "empty", children: "No items in this category." }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 100,
             columnNumber: 36
@@ -640,7 +639,7 @@ function RegisterView() {
         lineNumber: 46,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV3(TicketPanel, { order }, void 0, false, {
+      /* @__PURE__ */ jsxDEV(TicketPanel, { order }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 104,
         columnNumber: 9
@@ -664,15 +663,15 @@ function TicketPanel({ order }) {
   const total = subtotal + tax;
   const canSend = items.length > 0 && order && order.status === "new";
   if (!order) {
-    return /* @__PURE__ */ jsxDEV3("aside", { className: "ticket empty", children: [
-      /* @__PURE__ */ jsxDEV3(Receipt, { size: 28 }, void 0, false, {
+    return /* @__PURE__ */ jsxDEV("aside", { className: "ticket empty", children: [
+      /* @__PURE__ */ jsxDEV(Receipt, { size: 28 }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 121,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV3("p", { children: [
+      /* @__PURE__ */ jsxDEV("p", { children: [
         "No open order.",
-        /* @__PURE__ */ jsxDEV3("br", {}, void 0, false, {
+        /* @__PURE__ */ jsxDEV("br", {}, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 122,
           columnNumber: 26
@@ -689,10 +688,10 @@ function TicketPanel({ order }) {
       columnNumber: 7
     }, this);
   }
-  return /* @__PURE__ */ jsxDEV3("aside", { className: "ticket", children: [
-    /* @__PURE__ */ jsxDEV3("div", { className: "ticket-head", children: [
-      /* @__PURE__ */ jsxDEV3("div", { children: [
-        /* @__PURE__ */ jsxDEV3("h2", { children: [
+  return /* @__PURE__ */ jsxDEV("aside", { className: "ticket", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "ticket-head", children: [
+      /* @__PURE__ */ jsxDEV("div", { children: [
+        /* @__PURE__ */ jsxDEV("h2", { children: [
           "Table ",
           order.tableId.slice(1)
         ] }, void 0, true, {
@@ -700,7 +699,7 @@ function TicketPanel({ order }) {
           lineNumber: 131,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV3("span", { className: "ticket-staff", children: order.staff }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { className: "ticket-staff", children: order.staff }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 132,
           columnNumber: 11
@@ -710,7 +709,7 @@ function TicketPanel({ order }) {
         lineNumber: 130,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV3("span", { className: `kstatus ${order.status}`, children: cap2(order.status) }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("span", { className: `kstatus ${order.status}`, children: cap2(order.status) }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 134,
         columnNumber: 9
@@ -720,15 +719,15 @@ function TicketPanel({ order }) {
       lineNumber: 129,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV3("div", { className: "ticket-items", children: [
-      items.length === 0 && /* @__PURE__ */ jsxDEV3("p", { className: "empty", children: "Cart is empty \u2014 add items." }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "ticket-items", children: [
+      items.length === 0 && /* @__PURE__ */ jsxDEV("p", { className: "empty", children: "Cart is empty \u2014 add items." }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 138,
         columnNumber: 32
       }, this),
-      items.map((it, idx) => /* @__PURE__ */ jsxDEV3("div", { className: "ticket-item", children: [
-        /* @__PURE__ */ jsxDEV3("div", { className: "ti-top", children: [
-          /* @__PURE__ */ jsxDEV3("span", { className: "ti-name", children: [
+      items.map((it, idx) => /* @__PURE__ */ jsxDEV("div", { className: "ticket-item", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "ti-top", children: [
+          /* @__PURE__ */ jsxDEV("span", { className: "ti-name", children: [
             it.qty,
             "\xD7 ",
             it.name
@@ -737,7 +736,7 @@ function TicketPanel({ order }) {
             lineNumber: 142,
             columnNumber: 15
           }, this),
-          /* @__PURE__ */ jsxDEV3("span", { className: "ti-price", children: [
+          /* @__PURE__ */ jsxDEV("span", { className: "ti-price", children: [
             "$",
             (it.price * it.qty).toFixed(2)
           ] }, void 0, true, {
@@ -750,9 +749,9 @@ function TicketPanel({ order }) {
           lineNumber: 141,
           columnNumber: 13
         }, this),
-        /* @__PURE__ */ jsxDEV3("div", { className: "ti-controls", children: [
-          /* @__PURE__ */ jsxDEV3("div", { className: "qty", children: [
-            /* @__PURE__ */ jsxDEV3("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1, children: /* @__PURE__ */ jsxDEV3(Minus, { size: 14 }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("div", { className: "ti-controls", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "qty", children: [
+            /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1, children: /* @__PURE__ */ jsxDEV(Minus, { size: 14 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 150,
               columnNumber: 19
@@ -761,12 +760,12 @@ function TicketPanel({ order }) {
               lineNumber: 149,
               columnNumber: 17
             }, this),
-            /* @__PURE__ */ jsxDEV3("span", { children: it.qty }, void 0, false, {
+            /* @__PURE__ */ jsxDEV("span", { children: it.qty }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 152,
               columnNumber: 17
             }, this),
-            /* @__PURE__ */ jsxDEV3("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), children: /* @__PURE__ */ jsxDEV3(Plus, { size: 14 }, void 0, false, {
+            /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), children: /* @__PURE__ */ jsxDEV(Plus, { size: 14 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 154,
               columnNumber: 19
@@ -780,7 +779,7 @@ function TicketPanel({ order }) {
             lineNumber: 148,
             columnNumber: 15
           }, this),
-          /* @__PURE__ */ jsxDEV3(
+          /* @__PURE__ */ jsxDEV(
             "input",
             {
               className: "note",
@@ -797,7 +796,7 @@ function TicketPanel({ order }) {
             },
             this
           ),
-          /* @__PURE__ */ jsxDEV3("button", { className: "remove", onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsxDEV3(Trash2, { size: 15 }, void 0, false, {
+          /* @__PURE__ */ jsxDEV("button", { className: "remove", onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 164,
             columnNumber: 17
@@ -821,14 +820,14 @@ function TicketPanel({ order }) {
       lineNumber: 137,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV3("div", { className: "ticket-totals", children: [
-      /* @__PURE__ */ jsxDEV3("div", { className: "tl", children: [
-        /* @__PURE__ */ jsxDEV3("span", { children: "Subtotal" }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "ticket-totals", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "tl", children: [
+        /* @__PURE__ */ jsxDEV("span", { children: "Subtotal" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 172,
           columnNumber: 29
         }, this),
-        /* @__PURE__ */ jsxDEV3("span", { children: [
+        /* @__PURE__ */ jsxDEV("span", { children: [
           "$",
           subtotal.toFixed(2)
         ] }, void 0, true, {
@@ -841,8 +840,8 @@ function TicketPanel({ order }) {
         lineNumber: 172,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV3("div", { className: "tl", children: [
-        /* @__PURE__ */ jsxDEV3("span", { children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "tl", children: [
+        /* @__PURE__ */ jsxDEV("span", { children: [
           "Tax (",
           (TAX_RATE * 100).toFixed(1),
           "%)"
@@ -851,7 +850,7 @@ function TicketPanel({ order }) {
           lineNumber: 173,
           columnNumber: 29
         }, this),
-        /* @__PURE__ */ jsxDEV3("span", { children: [
+        /* @__PURE__ */ jsxDEV("span", { children: [
           "$",
           tax.toFixed(2)
         ] }, void 0, true, {
@@ -864,13 +863,13 @@ function TicketPanel({ order }) {
         lineNumber: 173,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV3("div", { className: "tl total", children: [
-        /* @__PURE__ */ jsxDEV3("span", { children: "Total" }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("div", { className: "tl total", children: [
+        /* @__PURE__ */ jsxDEV("span", { children: "Total" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 174,
           columnNumber: 35
         }, this),
-        /* @__PURE__ */ jsxDEV3("span", { children: [
+        /* @__PURE__ */ jsxDEV("span", { children: [
           "$",
           total.toFixed(2)
         ] }, void 0, true, {
@@ -888,15 +887,15 @@ function TicketPanel({ order }) {
       lineNumber: 171,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV3("div", { className: "ticket-actions", children: [
-      /* @__PURE__ */ jsxDEV3(
+    /* @__PURE__ */ jsxDEV("div", { className: "ticket-actions", children: [
+      /* @__PURE__ */ jsxDEV(
         "button",
         {
           className: "btn kitchen",
           disabled: !canSend,
           onClick: () => dispatch({ type: "SEND_TO_KITCHEN", orderId: order.id }),
           children: [
-            /* @__PURE__ */ jsxDEV3(ChefHat, { size: 17 }, void 0, false, {
+            /* @__PURE__ */ jsxDEV(ChefHat, { size: 17 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 183,
               columnNumber: 11
@@ -913,15 +912,15 @@ function TicketPanel({ order }) {
         },
         this
       ),
-      /* @__PURE__ */ jsxDEV3("div", { className: "row", children: [
-        /* @__PURE__ */ jsxDEV3(
+      /* @__PURE__ */ jsxDEV("div", { className: "row", children: [
+        /* @__PURE__ */ jsxDEV(
           "button",
           {
             className: "btn ghost",
             disabled: items.length === 0,
             onClick: () => dispatch({ type: "REQUEST_BILL", orderId: order.id }),
             children: [
-              /* @__PURE__ */ jsxDEV3(Printer, { size: 16 }, void 0, false, {
+              /* @__PURE__ */ jsxDEV(Printer, { size: 16 }, void 0, false, {
                 fileName: "<stdin>",
                 lineNumber: 191,
                 columnNumber: 13
@@ -938,14 +937,14 @@ function TicketPanel({ order }) {
           },
           this
         ),
-        /* @__PURE__ */ jsxDEV3(
+        /* @__PURE__ */ jsxDEV(
           "button",
           {
             className: "btn pay",
             disabled: items.length === 0,
             onClick: () => dispatch({ type: "PAY", orderId: order.id }),
             children: [
-              /* @__PURE__ */ jsxDEV3(CreditCard, { size: 16 }, void 0, false, {
+              /* @__PURE__ */ jsxDEV(CreditCard, { size: 16 }, void 0, false, {
                 fileName: "<stdin>",
                 lineNumber: 198,
                 columnNumber: 13
@@ -986,7 +985,6 @@ function cap2(s) {
 }
 
 // js/views/kds.jsx
-import { jsxDEV as jsxDEV4 } from "react/jsx-dev-runtime";
 import { useEffect as useEffect2, useState as useState3 } from "react";
 import { ChefHat as ChefHat2, CookingPot, Check, X, Timer } from "lucide-react";
 function useNow() {
@@ -1010,15 +1008,15 @@ function KdsView() {
   const orders = useKitchenOrders(state);
   const now = useNow();
   const tableName = (id) => state.tables.find((t) => t.id === id)?.name || id;
-  return /* @__PURE__ */ jsxDEV4("div", { className: "kds", children: [
-    /* @__PURE__ */ jsxDEV4("div", { className: "view-head", children: [
-      /* @__PURE__ */ jsxDEV4("div", { children: [
-        /* @__PURE__ */ jsxDEV4("h1", { children: "Kitchen Display" }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("div", { className: "kds", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: [
+      /* @__PURE__ */ jsxDEV("div", { children: [
+        /* @__PURE__ */ jsxDEV("h1", { children: "Kitchen Display" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 33,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV4("p", { className: "hint", children: "Orders 15+ min are flagged red." }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("p", { className: "hint", children: "Orders 15+ min are flagged red." }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 34,
           columnNumber: 11
@@ -1028,7 +1026,7 @@ function KdsView() {
         lineNumber: 32,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV4("span", { className: "kds-count", children: [
+      /* @__PURE__ */ jsxDEV("span", { className: "kds-count", children: [
         orders.length,
         " live ticket",
         orders.length !== 1 ? "s" : ""
@@ -1042,13 +1040,13 @@ function KdsView() {
       lineNumber: 31,
       columnNumber: 7
     }, this),
-    orders.length === 0 ? /* @__PURE__ */ jsxDEV4("div", { className: "kds-empty", children: [
-      /* @__PURE__ */ jsxDEV4(ChefHat2, { size: 40 }, void 0, false, {
+    orders.length === 0 ? /* @__PURE__ */ jsxDEV("div", { className: "kds-empty", children: [
+      /* @__PURE__ */ jsxDEV(ChefHat2, { size: 40 }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 41,
         columnNumber: 11
       }, this),
-      /* @__PURE__ */ jsxDEV4("p", { children: "All caught up \u2014 no active tickets." }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("p", { children: "All caught up \u2014 no active tickets." }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 42,
         columnNumber: 11
@@ -1057,18 +1055,18 @@ function KdsView() {
       fileName: "<stdin>",
       lineNumber: 40,
       columnNumber: 9
-    }, this) : /* @__PURE__ */ jsxDEV4("div", { className: "kds-grid", children: orders.map((o) => {
+    }, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
       const elapsed = now - o.createdAt;
       const red = elapsed > 15 * 60 * 1e3;
-      return /* @__PURE__ */ jsxDEV4("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
-        /* @__PURE__ */ jsxDEV4("header", { className: "k-head", children: [
-          /* @__PURE__ */ jsxDEV4("div", { children: [
-            /* @__PURE__ */ jsxDEV4("h3", { children: tableName(o.tableId) }, void 0, false, {
+      return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
+        /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
+          /* @__PURE__ */ jsxDEV("div", { children: [
+            /* @__PURE__ */ jsxDEV("h3", { children: tableName(o.tableId) }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 53,
               columnNumber: 21
             }, this),
-            /* @__PURE__ */ jsxDEV4("span", { className: "k-staff", children: o.staff }, void 0, false, {
+            /* @__PURE__ */ jsxDEV("span", { className: "k-staff", children: o.staff }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 54,
               columnNumber: 21
@@ -1078,8 +1076,8 @@ function KdsView() {
             lineNumber: 52,
             columnNumber: 19
           }, this),
-          /* @__PURE__ */ jsxDEV4("div", { className: `k-timer ${red ? "hot" : ""}`, children: [
-            /* @__PURE__ */ jsxDEV4(Timer, { size: 15 }, void 0, false, {
+          /* @__PURE__ */ jsxDEV("div", { className: `k-timer ${red ? "hot" : ""}`, children: [
+            /* @__PURE__ */ jsxDEV(Timer, { size: 15 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 57,
               columnNumber: 21
@@ -1095,8 +1093,8 @@ function KdsView() {
           lineNumber: 51,
           columnNumber: 17
         }, this),
-        /* @__PURE__ */ jsxDEV4("ul", { className: "k-items", children: o.items.map((it, i) => /* @__PURE__ */ jsxDEV4("li", { children: [
-          /* @__PURE__ */ jsxDEV4("span", { className: "k-qty", children: [
+        /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: o.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", { children: [
+          /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
             it.qty,
             "\xD7"
           ] }, void 0, true, {
@@ -1104,9 +1102,9 @@ function KdsView() {
             lineNumber: 65,
             columnNumber: 23
           }, this),
-          /* @__PURE__ */ jsxDEV4("span", { className: "k-line", children: [
+          /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
             it.name,
-            it.note && /* @__PURE__ */ jsxDEV4("em", { className: "k-note", children: it.note }, void 0, false, {
+            it.note && /* @__PURE__ */ jsxDEV("em", { className: "k-note", children: it.note }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 68,
               columnNumber: 37
@@ -1125,9 +1123,9 @@ function KdsView() {
           lineNumber: 62,
           columnNumber: 17
         }, this),
-        /* @__PURE__ */ jsxDEV4("footer", { className: "k-actions", children: [
-          o.status === "sent" && /* @__PURE__ */ jsxDEV4("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "preparing" }), children: [
-            /* @__PURE__ */ jsxDEV4(CookingPot, { size: 16 }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("footer", { className: "k-actions", children: [
+          o.status === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "preparing" }), children: [
+            /* @__PURE__ */ jsxDEV(CookingPot, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 77,
               columnNumber: 23
@@ -1138,8 +1136,8 @@ function KdsView() {
             lineNumber: 76,
             columnNumber: 21
           }, this),
-          o.status === "preparing" && /* @__PURE__ */ jsxDEV4("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "ready" }), children: [
-            /* @__PURE__ */ jsxDEV4(Check, { size: 16 }, void 0, false, {
+          o.status === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "ready" }), children: [
+            /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 82,
               columnNumber: 23
@@ -1150,8 +1148,8 @@ function KdsView() {
             lineNumber: 81,
             columnNumber: 21
           }, this),
-          o.status === "ready" && /* @__PURE__ */ jsxDEV4("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "served" }), children: [
-            /* @__PURE__ */ jsxDEV4(Check, { size: 16 }, void 0, false, {
+          o.status === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "served" }), children: [
+            /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 87,
               columnNumber: 23
@@ -1162,8 +1160,8 @@ function KdsView() {
             lineNumber: 86,
             columnNumber: 21
           }, this),
-          /* @__PURE__ */ jsxDEV4("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id }), children: [
-            /* @__PURE__ */ jsxDEV4(X, { size: 16 }, void 0, false, {
+          /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id }), children: [
+            /* @__PURE__ */ jsxDEV(X, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 91,
               columnNumber: 21
@@ -1197,18 +1195,17 @@ function KdsView() {
 }
 
 // js/views/settings.jsx
-import { jsxDEV as jsxDEV5 } from "react/jsx-dev-runtime";
 import { useState as useState4 } from "react";
 import { Plus as Plus2, Trash2 as Trash22, User, Square } from "lucide-react";
 function SettingsView() {
-  return /* @__PURE__ */ jsxDEV5("div", { className: "settings", children: [
-    /* @__PURE__ */ jsxDEV5("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV5("div", { children: [
-      /* @__PURE__ */ jsxDEV5("h1", { children: "Admin" }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("div", { className: "settings", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
+      /* @__PURE__ */ jsxDEV("h1", { children: "Admin" }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 10,
         columnNumber: 11
       }, this),
-      /* @__PURE__ */ jsxDEV5("p", { className: "hint", children: "Manage menu, stock, staff and floor plan." }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("p", { className: "hint", children: "Manage menu, stock, staff and floor plan." }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 11,
         columnNumber: 11
@@ -1222,23 +1219,23 @@ function SettingsView() {
       lineNumber: 8,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV5("div", { className: "setting-tabs-grid", children: [
-      /* @__PURE__ */ jsxDEV5(MenuManager, {}, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "setting-tabs-grid", children: [
+      /* @__PURE__ */ jsxDEV(MenuManager, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 15,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV5(StaffManager, {}, void 0, false, {
+      /* @__PURE__ */ jsxDEV(StaffManager, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 16,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV5(FloorManager, {}, void 0, false, {
+      /* @__PURE__ */ jsxDEV(FloorManager, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 17,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV5(InventoryPanel, {}, void 0, false, {
+      /* @__PURE__ */ jsxDEV(InventoryPanel, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 18,
         columnNumber: 9
@@ -1282,20 +1279,20 @@ function MenuManager() {
     setPrice(String(item.price));
     setStock(String(item.stock));
   };
-  return /* @__PURE__ */ jsxDEV5("section", { className: "panel", children: [
-    /* @__PURE__ */ jsxDEV5("h2", { children: "Menu" }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV("h2", { children: "Menu" }, void 0, false, {
       fileName: "<stdin>",
       lineNumber: 57,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV5("div", { className: "form", children: [
-      /* @__PURE__ */ jsxDEV5("input", { placeholder: "Item name", value: name, onChange: (e) => setName(e.target.value) }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "form", children: [
+      /* @__PURE__ */ jsxDEV("input", { placeholder: "Item name", value: name, onChange: (e) => setName(e.target.value) }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 59,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
-        /* @__PURE__ */ jsxDEV5("select", { value: category, onChange: (e) => setCategory(e.target.value), children: state.categories.map((c) => /* @__PURE__ */ jsxDEV5("option", { children: c }, c, false, {
+      /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV("select", { value: category, onChange: (e) => setCategory(e.target.value), children: state.categories.map((c) => /* @__PURE__ */ jsxDEV("option", { children: c }, c, false, {
           fileName: "<stdin>",
           lineNumber: 63,
           columnNumber: 15
@@ -1304,12 +1301,12 @@ function MenuManager() {
           lineNumber: 61,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV5("input", { type: "number", min: "0", step: "0.01", placeholder: "Price", value: price, onChange: (e) => setPrice(e.target.value) }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("input", { type: "number", min: "0", step: "0.01", placeholder: "Price", value: price, onChange: (e) => setPrice(e.target.value) }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 66,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV5("input", { type: "number", min: "0", placeholder: "Stock", value: stock, onChange: (e) => setStock(e.target.value) }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("input", { type: "number", min: "0", placeholder: "Stock", value: stock, onChange: (e) => setStock(e.target.value) }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 67,
           columnNumber: 11
@@ -1319,9 +1316,9 @@ function MenuManager() {
         lineNumber: 60,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
-        /* @__PURE__ */ jsxDEV5("button", { className: "btn primary", onClick: submit, children: [
-          /* @__PURE__ */ jsxDEV5(Plus2, { size: 16 }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: submit, children: [
+          /* @__PURE__ */ jsxDEV(Plus2, { size: 16 }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 71,
             columnNumber: 13
@@ -1333,7 +1330,7 @@ function MenuManager() {
           lineNumber: 70,
           columnNumber: 11
         }, this),
-        editing && /* @__PURE__ */ jsxDEV5("button", { className: "btn ghost", onClick: () => {
+        editing && /* @__PURE__ */ jsxDEV("button", { className: "btn ghost", onClick: () => {
           setEditing(null);
           setName("");
           setPrice("");
@@ -1353,14 +1350,14 @@ function MenuManager() {
       lineNumber: 58,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV5("div", { className: "panel-list", children: state.menu.map((m) => /* @__PURE__ */ jsxDEV5("div", { className: "pl-row", children: [
-      /* @__PURE__ */ jsxDEV5("span", { className: "pl-main", children: [
-        /* @__PURE__ */ jsxDEV5("span", { className: "pl-name", children: m.name }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: state.menu.map((m) => /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
+      /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: [
+        /* @__PURE__ */ jsxDEV("span", { className: "pl-name", children: m.name }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 81,
           columnNumber: 15
         }, this),
-        /* @__PURE__ */ jsxDEV5("span", { className: "pl-cat", children: m.category }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { className: "pl-cat", children: m.category }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 82,
           columnNumber: 15
@@ -1370,12 +1367,12 @@ function MenuManager() {
         lineNumber: 80,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV5("span", { className: "pl-stock", "data-kind": stockBadge(m.stock), children: m.stock <= 0 ? "Out" : m.stock <= LOW_STOCK ? `Low \xB7 ${m.stock}` : `${m.stock} in stock` }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("span", { className: "pl-stock", "data-kind": stockBadge(m.stock), children: m.stock <= 0 ? "Out" : m.stock <= LOW_STOCK ? `Low \xB7 ${m.stock}` : `${m.stock} in stock` }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 84,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV5("span", { className: "pl-price", children: [
+      /* @__PURE__ */ jsxDEV("span", { className: "pl-price", children: [
         "$",
         m.price.toFixed(2)
       ] }, void 0, true, {
@@ -1383,12 +1380,12 @@ function MenuManager() {
         lineNumber: 87,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV5("button", { className: "pl-edit", onClick: () => startEdit(m), children: "Edit" }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("button", { className: "pl-edit", onClick: () => startEdit(m), children: "Edit" }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 88,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV5("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_ITEM", id: m.id }), children: /* @__PURE__ */ jsxDEV5(Trash22, { size: 15 }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_ITEM", id: m.id }), children: /* @__PURE__ */ jsxDEV(Trash22, { size: 15 }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 90,
         columnNumber: 15
@@ -1432,20 +1429,20 @@ function StaffManager() {
       setName("");
     }
   };
-  return /* @__PURE__ */ jsxDEV5("section", { className: "panel", children: [
-    /* @__PURE__ */ jsxDEV5("h2", { children: "Staff" }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV("h2", { children: "Staff" }, void 0, false, {
       fileName: "<stdin>",
       lineNumber: 118,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV5("div", { className: "form", onSubmit: (e) => e.preventDefault(), children: /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
-      /* @__PURE__ */ jsxDEV5("input", { placeholder: "Add waitstaff name", value: name, onChange: (e) => setName(e.target.value), onKeyDown: (e) => e.key === "Enter" && add() }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "form", onSubmit: (e) => e.preventDefault(), children: /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
+      /* @__PURE__ */ jsxDEV("input", { placeholder: "Add waitstaff name", value: name, onChange: (e) => setName(e.target.value), onKeyDown: (e) => e.key === "Enter" && add() }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 121,
         columnNumber: 11
       }, this),
-      /* @__PURE__ */ jsxDEV5("button", { className: "btn primary", onClick: add, children: [
-        /* @__PURE__ */ jsxDEV5(Plus2, { size: 16 }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: add, children: [
+        /* @__PURE__ */ jsxDEV(Plus2, { size: 16 }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 123,
           columnNumber: 13
@@ -1465,15 +1462,15 @@ function StaffManager() {
       lineNumber: 119,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV5("div", { className: "panel-list", children: state.staff.map((s) => /* @__PURE__ */ jsxDEV5("div", { className: "pl-row", children: [
-      /* @__PURE__ */ jsxDEV5("span", { className: "pl-main", children: [
-        /* @__PURE__ */ jsxDEV5(User, { size: 14 }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: state.staff.map((s) => /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
+      /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: [
+        /* @__PURE__ */ jsxDEV(User, { size: 14 }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 130,
           columnNumber: 39
         }, this),
         " ",
-        /* @__PURE__ */ jsxDEV5("span", { className: "pl-name", children: s }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { className: "pl-name", children: s }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 130,
           columnNumber: 58
@@ -1483,12 +1480,12 @@ function StaffManager() {
         lineNumber: 130,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV5("span", { className: "pl-stock ok", children: s === state.currentStaff ? "Active" : "" }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("span", { className: "pl-stock ok", children: s === state.currentStaff ? "Active" : "" }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 131,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV5("button", { className: "pl-del", onClick: () => dispatch({ type: "REMOVE_STAFF", name: s }), children: /* @__PURE__ */ jsxDEV5(Trash22, { size: 15 }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("button", { className: "pl-del", onClick: () => dispatch({ type: "REMOVE_STAFF", name: s }), children: /* @__PURE__ */ jsxDEV(Trash22, { size: 15 }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 133,
         columnNumber: 15
@@ -1524,20 +1521,20 @@ function FloorManager() {
       setName("");
     }
   };
-  return /* @__PURE__ */ jsxDEV5("section", { className: "panel", children: [
-    /* @__PURE__ */ jsxDEV5("h2", { children: "Floor Plan" }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV("h2", { children: "Floor Plan" }, void 0, false, {
       fileName: "<stdin>",
       lineNumber: 158,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV5("div", { className: "form", children: [
-      /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
-        /* @__PURE__ */ jsxDEV5("input", { placeholder: "Table name (e.g. Table 7)", value: name, onChange: (e) => setName(e.target.value) }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "form", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV("input", { placeholder: "Table name (e.g. Table 7)", value: name, onChange: (e) => setName(e.target.value) }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 161,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV5("input", { type: "number", min: "1", value: caps, onChange: (e) => setCaps(e.target.value), title: "Seats" }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("input", { type: "number", min: "1", value: caps, onChange: (e) => setCaps(e.target.value), title: "Seats" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 162,
           columnNumber: 11
@@ -1547,8 +1544,8 @@ function FloorManager() {
         lineNumber: 160,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
-        /* @__PURE__ */ jsxDEV5("select", { value: zone, onChange: (e) => setZone(e.target.value), children: ["Main", "Patio", "Bar", "Window"].map((z) => /* @__PURE__ */ jsxDEV5("option", { children: z }, z, false, {
+      /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV("select", { value: zone, onChange: (e) => setZone(e.target.value), children: ["Main", "Patio", "Bar", "Window"].map((z) => /* @__PURE__ */ jsxDEV("option", { children: z }, z, false, {
           fileName: "<stdin>",
           lineNumber: 167,
           columnNumber: 15
@@ -1557,8 +1554,8 @@ function FloorManager() {
           lineNumber: 165,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV5("button", { className: "btn primary", onClick: add, children: [
-          /* @__PURE__ */ jsxDEV5(Plus2, { size: 16 }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: add, children: [
+          /* @__PURE__ */ jsxDEV(Plus2, { size: 16 }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 171,
             columnNumber: 13
@@ -1579,15 +1576,15 @@ function FloorManager() {
       lineNumber: 159,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV5("div", { className: "panel-list", children: state.tables.map((t) => /* @__PURE__ */ jsxDEV5("div", { className: "pl-row", children: [
-      /* @__PURE__ */ jsxDEV5("span", { className: "pl-main", children: [
-        /* @__PURE__ */ jsxDEV5(Square, { size: 14 }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: state.tables.map((t) => /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
+      /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: [
+        /* @__PURE__ */ jsxDEV(Square, { size: 14 }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 179,
           columnNumber: 39
         }, this),
         " ",
-        /* @__PURE__ */ jsxDEV5("span", { className: "pl-name", children: t.name }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { className: "pl-name", children: t.name }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 179,
           columnNumber: 60
@@ -1597,7 +1594,7 @@ function FloorManager() {
         lineNumber: 179,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV5("span", { className: "pl-cat", children: [
+      /* @__PURE__ */ jsxDEV("span", { className: "pl-cat", children: [
         t.zone,
         " \xB7 ",
         t.capacity,
@@ -1607,7 +1604,7 @@ function FloorManager() {
         lineNumber: 180,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV5("button", { className: "pl-edit", onClick: () => {
+      /* @__PURE__ */ jsxDEV("button", { className: "pl-edit", onClick: () => {
         const nn = prompt(`Rename ${t.name}:`, t.name);
         if (nn && nn.trim()) dispatch({ type: "RENAME_TABLE", id: t.id, name: nn.trim() });
       }, children: "Rename" }, void 0, false, {
@@ -1615,7 +1612,7 @@ function FloorManager() {
         lineNumber: 181,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV5("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_TABLE", id: t.id }), children: /* @__PURE__ */ jsxDEV5(Trash22, { size: 15 }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_TABLE", id: t.id }), children: /* @__PURE__ */ jsxDEV(Trash22, { size: 15 }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 185,
         columnNumber: 15
@@ -1641,16 +1638,16 @@ function FloorManager() {
 }
 function InventoryPanel() {
   const { state } = useStore();
-  return /* @__PURE__ */ jsxDEV5("section", { className: "panel", children: [
-    /* @__PURE__ */ jsxDEV5("h2", { children: "Inventory" }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV("h2", { children: "Inventory" }, void 0, false, {
       fileName: "<stdin>",
       lineNumber: 198,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV5("div", { className: "panel-list", children: state.menu.map((m) => {
+    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: state.menu.map((m) => {
       const b = stockBadgeInfo(m.stock);
-      return /* @__PURE__ */ jsxDEV5("div", { className: "pl-row", children: [
-        /* @__PURE__ */ jsxDEV5("span", { className: "pl-main", children: /* @__PURE__ */ jsxDEV5("span", { className: "pl-name", children: m.name }, void 0, false, {
+      return /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
+        /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: /* @__PURE__ */ jsxDEV("span", { className: "pl-name", children: m.name }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 204,
           columnNumber: 41
@@ -1659,12 +1656,12 @@ function InventoryPanel() {
           lineNumber: 204,
           columnNumber: 15
         }, this),
-        /* @__PURE__ */ jsxDEV5("span", { className: `badge ${b.cls}`, children: b.label }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { className: `badge ${b.cls}`, children: b.label }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 205,
           columnNumber: 15
         }, this),
-        /* @__PURE__ */ jsxDEV5("span", { className: "pl-stock", "data-kind": b.cls, children: m.stock }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { className: "pl-stock", "data-kind": b.cls, children: m.stock }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 206,
           columnNumber: 15
@@ -1702,7 +1699,7 @@ function useClock() {
   return now;
 }
 function ThemeToggle({ theme, setTheme }) {
-  return /* @__PURE__ */ jsxDEV6(
+  return /* @__PURE__ */ jsxDEV(
     "button",
     {
       className: "icon-btn",
@@ -1712,11 +1709,11 @@ function ThemeToggle({ theme, setTheme }) {
         document.documentElement.setAttribute("data-theme", next);
       },
       title: "Toggle theme",
-      children: theme === "dark" ? /* @__PURE__ */ jsxDEV6(Sun, { size: 18 }, void 0, false, {
+      children: theme === "dark" ? /* @__PURE__ */ jsxDEV(Sun, { size: 18 }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 47,
         columnNumber: 27
-      }, this) : /* @__PURE__ */ jsxDEV6(Moon, { size: 18 }, void 0, false, {
+      }, this) : /* @__PURE__ */ jsxDEV(Moon, { size: 18 }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 47,
         columnNumber: 47
@@ -1739,14 +1736,14 @@ function Header({ view, setView, theme, setTheme }) {
   const activeOrder = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const liveCount = Object.values(ordersByTable).filter((o) => o.items.length && o.status !== "new").length;
   const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  return /* @__PURE__ */ jsxDEV6("header", { className: "header", children: [
-    /* @__PURE__ */ jsxDEV6("div", { className: "brand", children: [
-      /* @__PURE__ */ jsxDEV6("span", { className: "brand-mark", children: "T" }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("header", { className: "header", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "brand", children: [
+      /* @__PURE__ */ jsxDEV("span", { className: "brand-mark", children: "T" }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 64,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV6("span", { className: "brand-name", children: "Tetra POS" }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("span", { className: "brand-name", children: "Tetra POS" }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 65,
         columnNumber: 9
@@ -1756,15 +1753,15 @@ function Header({ view, setView, theme, setTheme }) {
       lineNumber: 63,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV6("nav", { className: "nav", children: VIEWS.map((v) => {
+    /* @__PURE__ */ jsxDEV("nav", { className: "nav", children: VIEWS.map((v) => {
       const Icon = v.icon;
-      return /* @__PURE__ */ jsxDEV6("button", { className: `nav-btn ${view === v.key ? "active" : ""}`, onClick: () => setView(v.key), children: [
-        /* @__PURE__ */ jsxDEV6(Icon, { size: 18 }, void 0, false, {
+      return /* @__PURE__ */ jsxDEV("button", { className: `nav-btn ${view === v.key ? "active" : ""}`, onClick: () => setView(v.key), children: [
+        /* @__PURE__ */ jsxDEV(Icon, { size: 18 }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 73,
           columnNumber: 15
         }, this),
-        /* @__PURE__ */ jsxDEV6("span", { children: v.name }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { children: v.name }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 74,
           columnNumber: 15
@@ -1779,14 +1776,14 @@ function Header({ view, setView, theme, setTheme }) {
       lineNumber: 68,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV6("div", { className: "header-right", children: [
-      /* @__PURE__ */ jsxDEV6("div", { className: "status-chip", "data-kind": liveCount ? "live" : "idle", children: [
-        /* @__PURE__ */ jsxDEV6("span", { className: "status-dot" }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { className: "header-right", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "status-chip", "data-kind": liveCount ? "live" : "idle", children: [
+        /* @__PURE__ */ jsxDEV("span", { className: "status-dot" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 82,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV6("span", { children: liveCount ? `${liveCount} live` : "Idle" }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { children: liveCount ? `${liveCount} live` : "Idle" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 83,
           columnNumber: 11
@@ -1796,18 +1793,18 @@ function Header({ view, setView, theme, setTheme }) {
         lineNumber: 81,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV6("div", { className: "order-label", children: activeOrder ? activeOrder.status === "new" ? "New order" : `${activeOrder.id.toUpperCase()} \xB7 ${cap3(activeOrder.status)}` : "No active order" }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("div", { className: "order-label", children: activeOrder ? activeOrder.status === "new" ? "New order" : `${activeOrder.id.toUpperCase()} \xB7 ${cap3(activeOrder.status)}` : "No active order" }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 86,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV6("label", { className: "staff-switch", children: [
-        /* @__PURE__ */ jsxDEV6(User2, { size: 16 }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("label", { className: "staff-switch", children: [
+        /* @__PURE__ */ jsxDEV(User2, { size: 16 }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 95,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV6("select", { value: state.currentStaff, onChange: (e) => dispatch({ type: "SET_STAFF", name: e.target.value }), children: state.staff.map((s) => /* @__PURE__ */ jsxDEV6("option", { value: s, children: s }, s, false, {
+        /* @__PURE__ */ jsxDEV("select", { value: state.currentStaff, onChange: (e) => dispatch({ type: "SET_STAFF", name: e.target.value }), children: state.staff.map((s) => /* @__PURE__ */ jsxDEV("option", { value: s, children: s }, s, false, {
           fileName: "<stdin>",
           lineNumber: 98,
           columnNumber: 15
@@ -1816,7 +1813,7 @@ function Header({ view, setView, theme, setTheme }) {
           lineNumber: 96,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV6(ChevronDown, { size: 14 }, void 0, false, {
+        /* @__PURE__ */ jsxDEV(ChevronDown, { size: 14 }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 103,
           columnNumber: 11
@@ -1826,13 +1823,13 @@ function Header({ view, setView, theme, setTheme }) {
         lineNumber: 94,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV6("div", { className: "clock-chip", children: [
-        /* @__PURE__ */ jsxDEV6(Clock, { size: 15 }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("div", { className: "clock-chip", children: [
+        /* @__PURE__ */ jsxDEV(Clock, { size: 15 }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 107,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV6("span", { children: timeStr }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("span", { children: timeStr }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 108,
           columnNumber: 11
@@ -1842,7 +1839,7 @@ function Header({ view, setView, theme, setTheme }) {
         lineNumber: 106,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV6(ThemeToggle, { theme, setTheme }, void 0, false, {
+      /* @__PURE__ */ jsxDEV(ThemeToggle, { theme, setTheme }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 111,
         columnNumber: 9
@@ -1866,29 +1863,29 @@ function Shell() {
   const [theme, setTheme] = useState5(
     () => document.documentElement.getAttribute("data-theme") || "dark"
   );
-  return /* @__PURE__ */ jsxDEV6("div", { className: "app", children: [
-    /* @__PURE__ */ jsxDEV6(Header, { view, setView, theme, setTheme }, void 0, false, {
+  return /* @__PURE__ */ jsxDEV("div", { className: "app", children: [
+    /* @__PURE__ */ jsxDEV(Header, { view, setView, theme, setTheme }, void 0, false, {
       fileName: "<stdin>",
       lineNumber: 129,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV6("main", { className: "main", children: [
-      view === "floorplan" && /* @__PURE__ */ jsxDEV6(FloorPlanView, { setView }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("main", { className: "main", children: [
+      view === "floorplan" && /* @__PURE__ */ jsxDEV(FloorPlanView, { setView }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 131,
         columnNumber: 34
       }, this),
-      view === "register" && /* @__PURE__ */ jsxDEV6(RegisterView, {}, void 0, false, {
+      view === "register" && /* @__PURE__ */ jsxDEV(RegisterView, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 132,
         columnNumber: 33
       }, this),
-      view === "kds" && /* @__PURE__ */ jsxDEV6(KdsView, {}, void 0, false, {
+      view === "kds" && /* @__PURE__ */ jsxDEV(KdsView, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 133,
         columnNumber: 28
       }, this),
-      view === "settings" && /* @__PURE__ */ jsxDEV6(SettingsView, {}, void 0, false, {
+      view === "settings" && /* @__PURE__ */ jsxDEV(SettingsView, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 134,
         columnNumber: 33
@@ -1905,7 +1902,7 @@ function Shell() {
   }, this);
 }
 createRoot(document.getElementById("root")).render(
-  /* @__PURE__ */ jsxDEV6(StoreProvider, { children: /* @__PURE__ */ jsxDEV6(Shell, {}, void 0, false, {
+  /* @__PURE__ */ jsxDEV(StoreProvider, { children: /* @__PURE__ */ jsxDEV(Shell, {}, void 0, false, {
     fileName: "<stdin>",
     lineNumber: 142,
     columnNumber: 5
