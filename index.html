@@ -19,6 +19,15 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" src="dist/app.js"></script>
+  <script type="module">
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    
+    // Rebuild app.js to import Square
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = 'dist/app.js';
+    document.body.appendChild(script);
+  </script>
 </body>
 </html>
