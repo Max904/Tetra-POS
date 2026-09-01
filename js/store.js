@@ -1,200 +1,322 @@
-import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import {
-  SAMPLE_STAFF,
-  SAMPLE_CATEGORIES,
-  SAMPLE_MENU,
-  SAMPLE_TABLES,
-  SAMPLE_ORDERS,
-} from "./data.js";
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { supabase } from "./supabaseClient.js";
 
 const LOW_STOCK = 5;
 
-function load(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+const EMPTY_STATE = {
+  staff: [],
+  categories: [],
+  menu: [],
+  tables: [],
+  orders: [],
+  currentStaff: "",
+  activeOrderId: null,
+};
 
-function initialState() {
+// ---------- fetch + shape everything into the state object the views expect ----------
+
+async function fetchAll() {
+  const [
+    { data: staffRows, error: e1 },
+    { data: menuRows, error: e2 },
+    { data: tableRows, error: e3 },
+    { data: orderRows, error: e4 },
+    { data: orderItemRows, error: e5 },
+    { data: appStateRows, error: e6 },
+  ] = await Promise.all([
+    supabase.from("staff").select("*").order("name"),
+    supabase.from("menu_items").select("*"),
+    supabase.from("tables").select("*"),
+    supabase.from("orders").select("*").order("created_at"),
+    supabase.from("order_items").select("*"),
+    supabase.from("app_state").select("*").eq("id", 1),
+  ]);
+
+  const err = e1 || e2 || e3 || e4 || e5 || e6;
+  if (err) {
+    console.error("Supabase fetch error:", err);
+    throw err;
+  }
+
+  const itemsByOrder = {};
+  for (const it of orderItemRows || []) {
+    (itemsByOrder[it.order_id] ||= []).push({
+      menuId: it.menu_id,
+      name: it.name,
+      price: Number(it.price),
+      qty: it.qty,
+      note: it.note || "",
+    });
+  }
+
+  const orders = (orderRows || []).map((o) => ({
+    id: o.id,
+    tableId: o.table_id,
+    staff: o.staff,
+    items: itemsByOrder[o.id] || [],
+    createdAt: new Date(o.created_at).getTime(),
+    status: o.status,
+    billRequested: o.bill_requested,
+    paid: o.paid,
+  }));
+
+  const appRow = (appStateRows && appStateRows[0]) || {};
+  const staffNames = (staffRows || []).map((s) => s.name);
+
   return {
-    staff: load("tetra.staff", SAMPLE_STAFF),
-    categories: load("tetra.categories", SAMPLE_CATEGORIES),
-    menu: load("tetra.menu", SAMPLE_MENU),
-    tables: load("tetra.tables", SAMPLE_TABLES),
-    orders: load("tetra.orders", SAMPLE_ORDERS),
-    currentStaff: load("tetra.currentStaff", SAMPLE_STAFF[0]),
-    activeOrderId: load("tetra.activeOrderId", null),
-    nextMenuId: load("tetra.nextMenuId", 100),
-    nextOrderId: load("tetra.nextOrderId", 100),
-    nextTableId: load("tetra.nextTableId", 100),
+    staff: staffNames,
+    categories: [...new Set((menuRows || []).map((m) => m.category))],
+    menu: (menuRows || []).map((m) => ({ ...m, price: Number(m.price) })),
+    tables: tableRows || [],
+    orders,
+    currentStaff: appRow.current_staff || staffNames[0] || "",
+    activeOrderId: appRow.active_order_id || null,
   };
 }
 
-function persist(state) {
-  try {
-    localStorage.setItem("tetra.staff", JSON.stringify(state.staff));
-    localStorage.setItem("tetra.categories", JSON.stringify(state.categories));
-    localStorage.setItem("tetra.menu", JSON.stringify(state.menu));
-    localStorage.setItem("tetra.tables", JSON.stringify(state.tables));
-    localStorage.setItem("tetra.orders", JSON.stringify(state.orders));
-    localStorage.setItem("tetra.currentStaff", JSON.stringify(state.currentStaff));
-    localStorage.setItem("tetra.activeOrderId", JSON.stringify(state.activeOrderId));
-    localStorage.setItem("tetra.nextMenuId", JSON.stringify(state.nextMenuId));
-    localStorage.setItem("tetra.nextOrderId", JSON.stringify(state.nextOrderId));
-    localStorage.setItem("tetra.nextTableId", JSON.stringify(state.nextTableId));
-  } catch {
-    /* storage unavailable */
-  }
-}
+// ---------- turn a dispatched action into Supabase writes ----------
+// Realtime subscriptions (below) pick up the resulting DB changes and
+// refresh local state — every connected device sees the same thing.
 
-function reducer(state, action) {
+async function runAction(action, state) {
   switch (action.type) {
     case "SET_STAFF":
-      return { ...state, currentStaff: action.name };
+      await supabase.from("app_state").update({ current_staff: action.name }).eq("id", 1);
+      return;
+
     case "ADD_STAFF":
-      return { ...state, staff: [...state.staff, action.name] };
-    case "REMOVE_STAFF":
-      if (state.staff.length <= 1) return state;
-      return {
-        ...state,
-        staff: state.staff.filter((s) => s !== action.name),
-        currentStaff:
-          state.currentStaff === action.name ? state.staff.find((s) => s !== action.name) : state.currentStaff,
-      };
+      await supabase.from("staff").insert({ name: action.name });
+      return;
+
+    case "REMOVE_STAFF": {
+      if (state.staff.length <= 1) return;
+      await supabase.from("staff").delete().eq("name", action.name);
+      if (state.currentStaff === action.name) {
+        const next = state.staff.find((s) => s !== action.name);
+        await supabase.from("app_state").update({ current_staff: next }).eq("id", 1);
+      }
+      return;
+    }
 
     case "ADD_ITEM":
-      return {
-        ...state,
-        menu: [
-          ...state.menu,
-          {
-            id: `m${state.nextMenuId}`,
-            name: action.name,
-            category: action.category,
-            price: action.price,
-            stock: action.stock,
-          },
-        ],
-        nextMenuId: state.nextMenuId + 1,
-      };
+      await supabase.from("menu_items").insert({
+        id: `m${Date.now()}`,
+        name: action.name,
+        category: action.category,
+        price: action.price,
+        stock: action.stock,
+      });
+      return;
+
     case "UPDATE_ITEM":
-      return {
-        ...state,
-        menu: state.menu.map((i) =>
-          i.id === action.id ? { ...i, name: action.name, category: action.category, price: action.price, stock: action.stock } : i
-        ),
-      };
+      await supabase
+        .from("menu_items")
+        .update({ name: action.name, category: action.category, price: action.price, stock: action.stock })
+        .eq("id", action.id);
+      return;
+
     case "DELETE_ITEM":
-      return { ...state, menu: state.menu.filter((i) => i.id !== action.id) };
+      await supabase.from("menu_items").delete().eq("id", action.id);
+      return;
 
     case "ADD_TABLE":
-      return {
-        ...state,
-        tables: [...state.tables, { id: `t${state.nextTableId}`, name: action.name, zone: action.zone, capacity: action.capacity }],
-        nextTableId: state.nextTableId + 1,
-      };
+      await supabase.from("tables").insert({
+        id: `t${Date.now()}`,
+        name: action.name,
+        zone: action.zone,
+        capacity: action.capacity,
+      });
+      return;
+
     case "RENAME_TABLE":
-      return { ...state, tables: state.tables.map((t) => (t.id === action.id ? { ...t, name: action.name } : t)) };
+      await supabase.from("tables").update({ name: action.name }).eq("id", action.id);
+      return;
+
     case "DELETE_TABLE":
-      return { ...state, tables: state.tables.filter((t) => t.id !== action.id) };
+      await supabase.from("tables").delete().eq("id", action.id);
+      return;
 
-    case "OPEN_ORDER":
-      return {
-        ...state,
-        orders: [
-          ...state.orders,
-          {
-            id: `o${state.nextOrderId}`,
-            tableId: action.tableId,
-            staff: state.currentStaff,
-            items: [],
-            createdAt: Date.now(),
-            status: "new",
-            billRequested: false,
-            paid: false,
-          },
-        ],
-        activeOrderId: `o${state.nextOrderId}`,
-        nextOrderId: state.nextOrderId + 1,
-      };
+    case "OPEN_ORDER": {
+      const id = `o${Date.now()}`;
+      await supabase.from("orders").insert({
+        id,
+        table_id: action.tableId,
+        staff: state.currentStaff,
+        status: "new",
+        bill_requested: false,
+        paid: false,
+      });
+      await supabase.from("app_state").update({ active_order_id: id }).eq("id", 1);
+      return;
+    }
+
     case "SELECT_ORDER":
-      return { ...state, activeOrderId: action.orderId };
-    case "SET_ACTIVE_TABLE":
-      return { ...state, activeOrderId: null };
-    case "ADD_TO_ORDER":
-      return {
-        ...state,
-        orders: state.orders.map((o) => {
-          if (o.id !== action.orderId) return o;
-          const existing = o.items.find((it) => it.menuId === action.menuId);
-          const items = existing
-            ? o.items.map((it) =>
-                it.menuId === action.menuId ? { ...it, qty: it.qty + 1 } : it
-              )
-            : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "" }];
-          return { ...o, items };
-        }),
-        menu: state.menu.map((m) =>
-          m.id === action.menuId ? { ...m, stock: Math.max(0, m.stock - 1) } : m
-        ),
-      };
-    case "SET_QTY":
-      return {
-        ...state,
-        orders: state.orders.map((o) =>
-          o.id === action.orderId
-            ? {
-                ...o,
-                items: o.items
-                  .map((it, idx) => (idx === action.index ? { ...it, qty: action.qty } : it))
-                  .filter((it) => it.qty > 0),
-              }
-            : o
-        ),
-      };
-    case "SET_NOTE":
-      return {
-        ...state,
-        orders: state.orders.map((o) =>
-          o.id === action.orderId
-            ? { ...o, items: o.items.map((it, idx) => (idx === action.index ? { ...it, note: action.note } : it)) }
-            : o
-        ),
-      };
+      await supabase.from("app_state").update({ active_order_id: action.orderId }).eq("id", 1);
+      return;
 
-    case "SEND_TO_KITCHEN":
-      return { ...state, orders: state.orders.map((o) => (o.id === action.orderId && o.items.length ? { ...o, status: "sent" } : o)) };
+    case "SET_ACTIVE_TABLE":
+      await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+      return;
+
+    case "ADD_TO_ORDER": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const existing = order?.items.find((it) => it.menuId === action.menuId);
+      if (existing) {
+        await supabase
+          .from("order_items")
+          .update({ qty: existing.qty + 1 })
+          .eq("order_id", action.orderId)
+          .eq("menu_id", action.menuId);
+      } else {
+        await supabase.from("order_items").insert({
+          order_id: action.orderId,
+          menu_id: action.menuId,
+          name: action.name,
+          price: action.price,
+          qty: 1,
+          note: "",
+        });
+      }
+      const menuItem = state.menu.find((m) => m.id === action.menuId);
+      if (menuItem) {
+        await supabase
+          .from("menu_items")
+          .update({ stock: Math.max(0, menuItem.stock - 1) })
+          .eq("id", action.menuId);
+      }
+      return;
+    }
+
+    case "SET_QTY": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      if (action.qty <= 0) {
+        await supabase
+          .from("order_items")
+          .delete()
+          .eq("order_id", action.orderId)
+          .eq("menu_id", item.menuId);
+      } else {
+        await supabase
+          .from("order_items")
+          .update({ qty: action.qty })
+          .eq("order_id", action.orderId)
+          .eq("menu_id", item.menuId);
+      }
+      return;
+    }
+
+    case "SET_NOTE": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      await supabase
+        .from("order_items")
+        .update({ note: action.note })
+        .eq("order_id", action.orderId)
+        .eq("menu_id", item.menuId);
+      return;
+    }
+
+    case "SEND_TO_KITCHEN": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      if (order && order.items.length) {
+        await supabase.from("orders").update({ status: "sent" }).eq("id", action.orderId);
+      }
+      return;
+    }
+
     case "SET_KITCHEN":
-      return { ...state, orders: state.orders.map((o) => (o.id === action.orderId ? { ...o, status: action.status } : o)) };
+      await supabase.from("orders").update({ status: action.status }).eq("id", action.orderId);
+      return;
+
     case "REQUEST_BILL":
-      return { ...state, orders: state.orders.map((o) => (o.id === action.orderId ? { ...o, billRequested: true } : o)) };
-    case "PAY":
-      return {
-        ...state,
-        orders: state.orders.map((o) => (o.id === action.orderId ? { ...o, paid: true, status: "paid" } : o)),
-        activeOrderId: state.activeOrderId === action.orderId ? null : state.activeOrderId,
-      };
-    case "DISMISS_ORDER":
-      return {
-        ...state,
-        orders: state.orders.filter((o) => o.id !== action.orderId),
-        activeOrderId: state.activeOrderId === action.orderId ? null : state.activeOrderId,
-      };
+      await supabase.from("orders").update({ bill_requested: true }).eq("id", action.orderId);
+      return;
+
+    case "PAY": {
+      await supabase.from("orders").update({ paid: true, status: "paid" }).eq("id", action.orderId);
+      if (state.activeOrderId === action.orderId) {
+        await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+      }
+      return;
+    }
+
+    case "DISMISS_ORDER": {
+      await supabase.from("orders").delete().eq("id", action.orderId);
+      if (state.activeOrderId === action.orderId) {
+        await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+      }
+      return;
+    }
 
     default:
-      return state;
+      return;
   }
 }
+
+// ---------- React wiring ----------
 
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, undefined, initialState);
-  useEffect(() => persist(state), [state]);
+  const [state, setState] = useState(EMPTY_STATE);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const refreshTimer = useRef(null);
+
+  const refreshNow = useCallback(async () => {
+    try {
+      const data = await fetchAll();
+      setState(data);
+    } catch {
+      // network hiccup — next realtime event or action will retry
+    }
+  }, []);
+
+  // Debounce so a burst of row-level realtime events (e.g. deleting an
+  // order + its items) only triggers one refetch.
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(refreshNow, 150);
+  }, [refreshNow]);
+
+  useEffect(() => {
+    refreshNow();
+
+    const channel = supabase
+      .channel("tetra-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tables" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "app_state" }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [refreshNow, scheduleRefresh]);
+
+  const dispatch = useCallback((action) => {
+    runAction(action, stateRef.current).catch((err) => {
+      console.error("Supabase write failed:", action.type, err);
+    });
+  }, []);
+
   const api = useMemo(() => ({ state, dispatch }), [state]);
+
   return <StoreContext.Provider value={api}>{children}</StoreContext.Provider>;
 }
 
