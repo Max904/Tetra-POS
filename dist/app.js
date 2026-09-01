@@ -1,5 +1,6 @@
 // js/app.jsx
-import { useEffect as useEffect3, useState as useState4 } from "react";
+import { jsxDEV as jsxDEV6 } from "react/jsx-dev-runtime";
+import { useEffect as useEffect3, useState as useState5 } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ShoppingCart,
@@ -14,39 +15,431 @@ import {
 } from "lucide-react";
 
 // js/store.js
-import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+
+// js/supabaseClient.js
+import { createClient } from "@supabase/supabase-js";
+var SUPABASE_URL = "https://venfrxrsqutlyxhsblbx.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbmZyeHJzcXV0bHl4aHNibGJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNzY5ODUsImV4cCI6MjEwMzg1Mjk4NX0.6tmXf2Y1-AZdq4o_9QlFmSjEVddY3n7iNmyJ5uAWUeE";
+var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  realtime: {
+    params: { eventsPerSecond: 10 }
+  }
+});
+
+// js/store.js
+import { jsxDEV } from "react/jsx-dev-runtime";
+var LOW_STOCK = 5;
+var EMPTY_STATE = {
+  staff: [],
+  categories: [],
+  menu: [],
+  tables: [],
+  orders: [],
+  currentStaff: "",
+  activeOrderId: null
+};
+async function fetchAll() {
+  const [
+    { data: staffRows, error: e1 },
+    { data: menuRows, error: e2 },
+    { data: tableRows, error: e3 },
+    { data: orderRows, error: e4 },
+    { data: orderItemRows, error: e5 },
+    { data: appStateRows, error: e6 }
+  ] = await Promise.all([
+    supabase.from("staff").select("*").order("name"),
+    supabase.from("menu_items").select("*"),
+    supabase.from("tables").select("*"),
+    supabase.from("orders").select("*").order("created_at"),
+    supabase.from("order_items").select("*"),
+    supabase.from("app_state").select("*").eq("id", 1)
+  ]);
+  const err = e1 || e2 || e3 || e4 || e5 || e6;
+  if (err) {
+    console.error("Supabase fetch error:", err);
+    throw err;
+  }
+  const itemsByOrder = {};
+  for (const it of orderItemRows || []) {
+    (itemsByOrder[it.order_id] ||= []).push({
+      menuId: it.menu_id,
+      name: it.name,
+      price: Number(it.price),
+      qty: it.qty,
+      note: it.note || ""
+    });
+  }
+  const orders = (orderRows || []).map((o) => ({
+    id: o.id,
+    tableId: o.table_id,
+    staff: o.staff,
+    items: itemsByOrder[o.id] || [],
+    createdAt: new Date(o.created_at).getTime(),
+    status: o.status,
+    billRequested: o.bill_requested,
+    paid: o.paid
+  }));
+  const appRow = appStateRows && appStateRows[0] || {};
+  const staffNames = (staffRows || []).map((s) => s.name);
+  return {
+    staff: staffNames,
+    categories: [...new Set((menuRows || []).map((m) => m.category))],
+    menu: (menuRows || []).map((m) => ({ ...m, price: Number(m.price) })),
+    tables: tableRows || [],
+    orders,
+    currentStaff: appRow.current_staff || staffNames[0] || "",
+    activeOrderId: appRow.active_order_id || null
+  };
+}
+async function runAction(action, state) {
+  switch (action.type) {
+    case "SET_STAFF":
+      await supabase.from("app_state").update({ current_staff: action.name }).eq("id", 1);
+      return;
+    case "ADD_STAFF":
+      await supabase.from("staff").insert({ name: action.name });
+      return;
+    case "REMOVE_STAFF": {
+      if (state.staff.length <= 1) return;
+      await supabase.from("staff").delete().eq("name", action.name);
+      if (state.currentStaff === action.name) {
+        const next = state.staff.find((s) => s !== action.name);
+        await supabase.from("app_state").update({ current_staff: next }).eq("id", 1);
+      }
+      return;
+    }
+    case "ADD_ITEM":
+      await supabase.from("menu_items").insert({
+        id: `m${Date.now()}`,
+        name: action.name,
+        category: action.category,
+        price: action.price,
+        stock: action.stock
+      });
+      return;
+    case "UPDATE_ITEM":
+      await supabase.from("menu_items").update({ name: action.name, category: action.category, price: action.price, stock: action.stock }).eq("id", action.id);
+      return;
+    case "DELETE_ITEM":
+      await supabase.from("menu_items").delete().eq("id", action.id);
+      return;
+    case "ADD_TABLE":
+      await supabase.from("tables").insert({
+        id: `t${Date.now()}`,
+        name: action.name,
+        zone: action.zone,
+        capacity: action.capacity
+      });
+      return;
+    case "RENAME_TABLE":
+      await supabase.from("tables").update({ name: action.name }).eq("id", action.id);
+      return;
+    case "DELETE_TABLE":
+      await supabase.from("tables").delete().eq("id", action.id);
+      return;
+    case "OPEN_ORDER": {
+      const id = `o${Date.now()}`;
+      await supabase.from("orders").insert({
+        id,
+        table_id: action.tableId,
+        staff: state.currentStaff,
+        status: "new",
+        bill_requested: false,
+        paid: false
+      });
+      await supabase.from("app_state").update({ active_order_id: id }).eq("id", 1);
+      return;
+    }
+    case "SELECT_ORDER":
+      await supabase.from("app_state").update({ active_order_id: action.orderId }).eq("id", 1);
+      return;
+    case "SET_ACTIVE_TABLE":
+      await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+      return;
+    case "ADD_TO_ORDER": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const existing = order?.items.find((it) => it.menuId === action.menuId);
+      if (existing) {
+        await supabase.from("order_items").update({ qty: existing.qty + 1 }).eq("order_id", action.orderId).eq("menu_id", action.menuId);
+      } else {
+        await supabase.from("order_items").insert({
+          order_id: action.orderId,
+          menu_id: action.menuId,
+          name: action.name,
+          price: action.price,
+          qty: 1,
+          note: ""
+        });
+      }
+      const menuItem = state.menu.find((m) => m.id === action.menuId);
+      if (menuItem) {
+        await supabase.from("menu_items").update({ stock: Math.max(0, menuItem.stock - 1) }).eq("id", action.menuId);
+      }
+      return;
+    }
+    case "SET_QTY": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      if (action.qty <= 0) {
+        await supabase.from("order_items").delete().eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      } else {
+        await supabase.from("order_items").update({ qty: action.qty }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      }
+      return;
+    }
+    case "SET_NOTE": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      await supabase.from("order_items").update({ note: action.note }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      return;
+    }
+    case "SEND_TO_KITCHEN": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      if (order && order.items.length) {
+        await supabase.from("orders").update({ status: "sent" }).eq("id", action.orderId);
+      }
+      return;
+    }
+    case "SET_KITCHEN":
+      await supabase.from("orders").update({ status: action.status }).eq("id", action.orderId);
+      return;
+    case "REQUEST_BILL":
+      await supabase.from("orders").update({ bill_requested: true }).eq("id", action.orderId);
+      return;
+    case "PAY": {
+      await supabase.from("orders").update({ paid: true, status: "paid" }).eq("id", action.orderId);
+      if (state.activeOrderId === action.orderId) {
+        await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+      }
+      return;
+    }
+    case "DISMISS_ORDER": {
+      await supabase.from("orders").delete().eq("id", action.orderId);
+      if (state.activeOrderId === action.orderId) {
+        await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+      }
+      return;
+    }
+    default:
+      return;
+  }
+}
+var StoreContext = createContext(null);
+function StoreProvider({ children }) {
+  const [state, setState] = useState(EMPTY_STATE);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const refreshTimer = useRef(null);
+  const refreshNow = useCallback(async () => {
+    try {
+      const data = await fetchAll();
+      setState(data);
+    } catch {
+    }
+  }, []);
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(refreshNow, 150);
+  }, [refreshNow]);
+  useEffect(() => {
+    refreshNow();
+    const channel = supabase.channel("tetra-sync").on("postgres_changes", { event: "*", schema: "public", table: "staff" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "tables" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "app_state" }, scheduleRefresh).subscribe();
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [refreshNow, scheduleRefresh]);
+  const dispatch = useCallback((action) => {
+    runAction(action, stateRef.current).catch((err) => {
+      console.error("Supabase write failed:", action.type, err);
+    });
+  }, []);
+  const api = useMemo(() => ({ state, dispatch }), [state]);
+  return /* @__PURE__ */ jsxDEV(StoreContext.Provider, { value: api, children }, void 0, false, {
+    fileName: "js/store.js",
+    lineNumber: 320,
+    columnNumber: 10
+  }, this);
+}
+function useStore() {
+  return useContext(StoreContext);
+}
+function useOrdersByTable(state) {
+  const activeByTable = {};
+  for (const o of state.orders) {
+    if (o.paid) continue;
+    if (!activeByTable[o.tableId] || activeByTable[o.tableId].createdAt < o.createdAt) {
+      activeByTable[o.tableId] = o;
+    }
+  }
+  return activeByTable;
+}
+function useKitchenOrders(state) {
+  return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid");
+}
+
+// js/views/floorplan.jsx
+import { jsxDEV as jsxDEV2 } from "react/jsx-dev-runtime";
+function tableStatus(order) {
+  if (!order || order.paid) return "available";
+  if (order.billRequested || order.status === "served") return "bill";
+  return "occupied";
+}
+function statusString(order) {
+  if (!order || order.paid) return "Available";
+  if (order.status === "new") return "Open order";
+  if (order.billRequested || order.status === "served") return "Pending bill";
+  return `${cap(order.staff)} \xB7 ${order.items.length} items`;
+}
+function cap(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function FloorPlanView({ setView }) {
+  const { state, dispatch } = useStore();
+  const ordersByTable = useOrdersByTable(state);
+  const zones = [...new Set(state.tables.map((t) => t.zone))];
+  const handleTable = (table) => {
+    const existing = ordersByTable[table.id];
+    if (existing) {
+      dispatch({ type: "SELECT_ORDER", orderId: existing.id });
+    } else {
+      dispatch({ type: "OPEN_ORDER", tableId: table.id });
+    }
+    setView("register");
+  };
+  return /* @__PURE__ */ jsxDEV2("div", { className: "floorplan", children: [
+    /* @__PURE__ */ jsxDEV2("div", { className: "view-head", children: [
+      /* @__PURE__ */ jsxDEV2("div", { children: [
+        /* @__PURE__ */ jsxDEV2("h1", { children: "Floor Plan" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 39,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV2("p", { className: "hint", children: "Tap a table to open or join its order." }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 40,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 38,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV2("div", { className: "legend", children: [
+        /* @__PURE__ */ jsxDEV2("span", { className: "lg", children: [
+          /* @__PURE__ */ jsxDEV2("i", { className: "dot avail" }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 43,
+            columnNumber: 32
+          }, this),
+          "Available"
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 43,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV2("span", { className: "lg", children: [
+          /* @__PURE__ */ jsxDEV2("i", { className: "dot occ" }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 44,
+            columnNumber: 32
+          }, this),
+          "Occupied"
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 44,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV2("span", { className: "lg", children: [
+          /* @__PURE__ */ jsxDEV2("i", { className: "dot bill" }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 45,
+            columnNumber: 32
+          }, this),
+          "Bill"
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 45,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 42,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 37,
+      columnNumber: 7
+    }, this),
+    zones.map((zone) => /* @__PURE__ */ jsxDEV2("section", { className: "zone", children: [
+      /* @__PURE__ */ jsxDEV2("h2", { className: "zone-title", children: zone }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 51,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV2("div", { className: "table-grid", children: state.tables.filter((t) => t.zone === zone).map((table) => {
+        const order = ordersByTable[table.id];
+        const status = tableStatus(order);
+        return /* @__PURE__ */ jsxDEV2("button", { className: `table-card ${status}`, onClick: () => handleTable(table), children: [
+          /* @__PURE__ */ jsxDEV2("span", { className: "table-shape", children: Array.from({ length: table.capacity }).map((_, i) => /* @__PURE__ */ jsxDEV2("i", {}, i, false, {
+            fileName: "<stdin>",
+            lineNumber: 62,
+            columnNumber: 25
+          }, this)) }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 60,
+            columnNumber: 21
+          }, this),
+          /* @__PURE__ */ jsxDEV2("span", { className: "table-name", children: table.name }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 65,
+            columnNumber: 21
+          }, this),
+          /* @__PURE__ */ jsxDEV2("span", { className: "table-status", children: statusString(order) }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 66,
+            columnNumber: 21
+          }, this)
+        ] }, table.id, true, {
+          fileName: "<stdin>",
+          lineNumber: 59,
+          columnNumber: 19
+        }, this);
+      }) }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 52,
+        columnNumber: 11
+      }, this)
+    ] }, zone, true, {
+      fileName: "<stdin>",
+      lineNumber: 50,
+      columnNumber: 9
+    }, this))
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 36,
+    columnNumber: 5
+  }, this);
+}
+
+// js/views/register.jsx
+import { Fragment, jsxDEV as jsxDEV3 } from "react/jsx-dev-runtime";
+import { useMemo as useMemo2, useState as useState2 } from "react";
+import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt } from "lucide-react";
 
 // js/data.js
-var SAMPLE_STAFF = ["Alex", "Jordan", "Sam", "Casey"];
-var SAMPLE_CATEGORIES = ["Starters", "Mains", "Drinks", "Desserts"];
-var SAMPLE_MENU = [
-  { id: "m1", name: "Garlic Bread", category: "Starters", price: 4.5, stock: 12 },
-  { id: "m2", name: "Bruschetta", category: "Starters", price: 6, stock: 9 },
-  { id: "m3", name: "Calamari", category: "Starters", price: 8, stock: 11 },
-  { id: "m4", name: "Wings", category: "Starters", price: 7, stock: 4 },
-  { id: "m5", name: "Margherita Pizza", category: "Mains", price: 12, stock: 0 },
-  { id: "m6", name: "Pepperoni Pizza", category: "Mains", price: 14, stock: 10 },
-  { id: "m7", name: "Ribeye Steak", category: "Mains", price: 23, stock: 6 },
-  { id: "m8", name: "Grilled Salmon", category: "Mains", price: 19, stock: 8 },
-  { id: "m9", name: "Spaghetti Bolognese", category: "Mains", price: 13, stock: 15 },
-  { id: "m10", name: "Caesar Salad", category: "Mains", price: 9, stock: 13 },
-  { id: "m11", name: "House Red Wine", category: "Drinks", price: 6, stock: 20 },
-  { id: "m12", name: "Craft Beer", category: "Drinks", price: 5.5, stock: 3 },
-  { id: "m13", name: "Iced Tea", category: "Drinks", price: 3, stock: 22 },
-  { id: "m14", name: "Sparkling Water", category: "Drinks", price: 2.5, stock: 30 },
-  { id: "m15", name: "Lemonade", category: "Drinks", price: 3.5, stock: 18 },
-  { id: "m16", name: "Tiramisu", category: "Desserts", price: 6.5, stock: 0 },
-  { id: "m17", name: "Cheesecake", category: "Desserts", price: 5.5, stock: 7 },
-  { id: "m18", name: "Chocolate Brownie", category: "Desserts", price: 5, stock: 10 }
-];
-var SAMPLE_TABLES = [
-  { id: "t1", name: "Table 1", zone: "Main", capacity: 4 },
-  { id: "t2", name: "Table 2", zone: "Main", capacity: 2 },
-  { id: "t3", name: "Table 3", zone: "Main", capacity: 6 },
-  { id: "t4", name: "Table 4", zone: "Main", capacity: 4 },
-  { id: "t5", name: "Patio 1", zone: "Patio", capacity: 4 },
-  { id: "t6", name: "Patio 2", zone: "Patio", capacity: 2 }
-];
 var SAMPLE_ORDERS = [
   {
     id: "o1",
@@ -77,263 +470,7 @@ var SAMPLE_ORDERS = [
 ];
 var TAX_RATE = 0.085;
 
-// js/store.js
-import { jsx } from "react/jsx-runtime";
-var LOW_STOCK = 5;
-function load(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function initialState() {
-  return {
-    staff: load("tetra.staff", SAMPLE_STAFF),
-    categories: load("tetra.categories", SAMPLE_CATEGORIES),
-    menu: load("tetra.menu", SAMPLE_MENU),
-    tables: load("tetra.tables", SAMPLE_TABLES),
-    orders: load("tetra.orders", SAMPLE_ORDERS),
-    currentStaff: load("tetra.currentStaff", SAMPLE_STAFF[0]),
-    activeOrderId: load("tetra.activeOrderId", null),
-    nextMenuId: load("tetra.nextMenuId", 100),
-    nextOrderId: load("tetra.nextOrderId", 100),
-    nextTableId: load("tetra.nextTableId", 100)
-  };
-}
-function persist(state) {
-  try {
-    localStorage.setItem("tetra.staff", JSON.stringify(state.staff));
-    localStorage.setItem("tetra.categories", JSON.stringify(state.categories));
-    localStorage.setItem("tetra.menu", JSON.stringify(state.menu));
-    localStorage.setItem("tetra.tables", JSON.stringify(state.tables));
-    localStorage.setItem("tetra.orders", JSON.stringify(state.orders));
-    localStorage.setItem("tetra.currentStaff", JSON.stringify(state.currentStaff));
-    localStorage.setItem("tetra.activeOrderId", JSON.stringify(state.activeOrderId));
-    localStorage.setItem("tetra.nextMenuId", JSON.stringify(state.nextMenuId));
-    localStorage.setItem("tetra.nextOrderId", JSON.stringify(state.nextOrderId));
-    localStorage.setItem("tetra.nextTableId", JSON.stringify(state.nextTableId));
-  } catch {
-  }
-}
-function reducer(state, action) {
-  switch (action.type) {
-    case "SET_STAFF":
-      return { ...state, currentStaff: action.name };
-    case "ADD_STAFF":
-      return { ...state, staff: [...state.staff, action.name] };
-    case "REMOVE_STAFF":
-      if (state.staff.length <= 1) return state;
-      return {
-        ...state,
-        staff: state.staff.filter((s) => s !== action.name),
-        currentStaff: state.currentStaff === action.name ? state.staff.find((s) => s !== action.name) : state.currentStaff
-      };
-    case "ADD_ITEM":
-      return {
-        ...state,
-        menu: [
-          ...state.menu,
-          {
-            id: `m${state.nextMenuId}`,
-            name: action.name,
-            category: action.category,
-            price: action.price,
-            stock: action.stock
-          }
-        ],
-        nextMenuId: state.nextMenuId + 1
-      };
-    case "UPDATE_ITEM":
-      return {
-        ...state,
-        menu: state.menu.map(
-          (i) => i.id === action.id ? { ...i, name: action.name, category: action.category, price: action.price, stock: action.stock } : i
-        )
-      };
-    case "DELETE_ITEM":
-      return { ...state, menu: state.menu.filter((i) => i.id !== action.id) };
-    case "ADD_TABLE":
-      return {
-        ...state,
-        tables: [...state.tables, { id: `t${state.nextTableId}`, name: action.name, zone: action.zone, capacity: action.capacity }],
-        nextTableId: state.nextTableId + 1
-      };
-    case "RENAME_TABLE":
-      return { ...state, tables: state.tables.map((t) => t.id === action.id ? { ...t, name: action.name } : t) };
-    case "DELETE_TABLE":
-      return { ...state, tables: state.tables.filter((t) => t.id !== action.id) };
-    case "OPEN_ORDER":
-      return {
-        ...state,
-        orders: [
-          ...state.orders,
-          {
-            id: `o${state.nextOrderId}`,
-            tableId: action.tableId,
-            staff: state.currentStaff,
-            items: [],
-            createdAt: Date.now(),
-            status: "new",
-            billRequested: false,
-            paid: false
-          }
-        ],
-        activeOrderId: `o${state.nextOrderId}`,
-        nextOrderId: state.nextOrderId + 1
-      };
-    case "SELECT_ORDER":
-      return { ...state, activeOrderId: action.orderId };
-    case "SET_ACTIVE_TABLE":
-      return { ...state, activeOrderId: null };
-    case "ADD_TO_ORDER":
-      return {
-        ...state,
-        orders: state.orders.map((o) => {
-          if (o.id !== action.orderId) return o;
-          const existing = o.items.find((it) => it.menuId === action.menuId);
-          const items = existing ? o.items.map(
-            (it) => it.menuId === action.menuId ? { ...it, qty: it.qty + 1 } : it
-          ) : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "" }];
-          return { ...o, items };
-        }),
-        menu: state.menu.map(
-          (m) => m.id === action.menuId ? { ...m, stock: Math.max(0, m.stock - 1) } : m
-        )
-      };
-    case "SET_QTY":
-      return {
-        ...state,
-        orders: state.orders.map(
-          (o) => o.id === action.orderId ? {
-            ...o,
-            items: o.items.map((it, idx) => idx === action.index ? { ...it, qty: action.qty } : it).filter((it) => it.qty > 0)
-          } : o
-        )
-      };
-    case "SET_NOTE":
-      return {
-        ...state,
-        orders: state.orders.map(
-          (o) => o.id === action.orderId ? { ...o, items: o.items.map((it, idx) => idx === action.index ? { ...it, note: action.note } : it) } : o
-        )
-      };
-    case "SEND_TO_KITCHEN":
-      return { ...state, orders: state.orders.map((o) => o.id === action.orderId && o.items.length ? { ...o, status: "sent" } : o) };
-    case "SET_KITCHEN":
-      return { ...state, orders: state.orders.map((o) => o.id === action.orderId ? { ...o, status: action.status } : o) };
-    case "REQUEST_BILL":
-      return { ...state, orders: state.orders.map((o) => o.id === action.orderId ? { ...o, billRequested: true } : o) };
-    case "PAY":
-      return {
-        ...state,
-        orders: state.orders.map((o) => o.id === action.orderId ? { ...o, paid: true, status: "paid" } : o),
-        activeOrderId: state.activeOrderId === action.orderId ? null : state.activeOrderId
-      };
-    case "DISMISS_ORDER":
-      return {
-        ...state,
-        orders: state.orders.filter((o) => o.id !== action.orderId),
-        activeOrderId: state.activeOrderId === action.orderId ? null : state.activeOrderId
-      };
-    default:
-      return state;
-  }
-}
-var StoreContext = createContext(null);
-function StoreProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, void 0, initialState);
-  useEffect(() => persist(state), [state]);
-  const api = useMemo(() => ({ state, dispatch }), [state]);
-  return /* @__PURE__ */ jsx(StoreContext.Provider, { value: api, children });
-}
-function useStore() {
-  return useContext(StoreContext);
-}
-function useOrdersByTable(state) {
-  const activeByTable = {};
-  for (const o of state.orders) {
-    if (o.paid) continue;
-    if (!activeByTable[o.tableId] || activeByTable[o.tableId].createdAt < o.createdAt) {
-      activeByTable[o.tableId] = o;
-    }
-  }
-  return activeByTable;
-}
-function useKitchenOrders(state) {
-  return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid");
-}
-
-// js/views/floorplan.jsx
-import { jsx as jsx2, jsxs } from "react/jsx-runtime";
-function tableStatus(order) {
-  if (!order || order.paid) return "available";
-  if (order.billRequested || order.status === "served") return "bill";
-  return "occupied";
-}
-function statusString(order) {
-  if (!order || order.paid) return "Available";
-  if (order.status === "new") return "Open order";
-  if (order.billRequested || order.status === "served") return "Pending bill";
-  return `${cap(order.staff)} \xB7 ${order.items.length} items`;
-}
-function cap(s) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-function FloorPlanView({ setView }) {
-  const { state, dispatch } = useStore();
-  const ordersByTable = useOrdersByTable(state);
-  const zones = [...new Set(state.tables.map((t) => t.zone))];
-  const handleTable = (table) => {
-    const existing = ordersByTable[table.id];
-    if (existing) {
-      dispatch({ type: "SELECT_ORDER", orderId: existing.id });
-    } else {
-      dispatch({ type: "OPEN_ORDER", tableId: table.id });
-    }
-    setView("register");
-  };
-  return /* @__PURE__ */ jsxs("div", { className: "floorplan", children: [
-    /* @__PURE__ */ jsxs("div", { className: "view-head", children: [
-      /* @__PURE__ */ jsxs("div", { children: [
-        /* @__PURE__ */ jsx2("h1", { children: "Floor Plan" }),
-        /* @__PURE__ */ jsx2("p", { className: "hint", children: "Tap a table to open or join its order." })
-      ] }),
-      /* @__PURE__ */ jsxs("div", { className: "legend", children: [
-        /* @__PURE__ */ jsxs("span", { className: "lg", children: [
-          /* @__PURE__ */ jsx2("i", { className: "dot avail" }),
-          "Available"
-        ] }),
-        /* @__PURE__ */ jsxs("span", { className: "lg", children: [
-          /* @__PURE__ */ jsx2("i", { className: "dot occ" }),
-          "Occupied"
-        ] }),
-        /* @__PURE__ */ jsxs("span", { className: "lg", children: [
-          /* @__PURE__ */ jsx2("i", { className: "dot bill" }),
-          "Bill"
-        ] })
-      ] })
-    ] }),
-    zones.map((zone) => /* @__PURE__ */ jsxs("section", { className: "zone", children: [
-      /* @__PURE__ */ jsx2("h2", { className: "zone-title", children: zone }),
-      /* @__PURE__ */ jsx2("div", { className: "table-grid", children: state.tables.filter((t) => t.zone === zone).map((table) => {
-        const order = ordersByTable[table.id];
-        const status = tableStatus(order);
-        return /* @__PURE__ */ jsxs("button", { className: `table-card ${status}`, onClick: () => handleTable(table), children: [
-          /* @__PURE__ */ jsx2("span", { className: "table-shape", children: Array.from({ length: table.capacity }).map((_, i) => /* @__PURE__ */ jsx2("i", {}, i)) }),
-          /* @__PURE__ */ jsx2("span", { className: "table-name", children: table.name }),
-          /* @__PURE__ */ jsx2("span", { className: "table-status", children: statusString(order) })
-        ] }, table.id);
-      }) })
-    ] }, zone))
-  ] });
-}
-
 // js/views/register.jsx
-import { useMemo as useMemo2, useState } from "react";
-import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt } from "lucide-react";
-import { Fragment, jsx as jsx3, jsxs as jsxs2 } from "react/jsx-runtime";
 function stockLabel(item) {
   if (item.stock === 0) return { text: "Out", cls: "out" };
   if (item.stock <= 5) return { text: "Low", cls: "low" };
@@ -341,8 +478,8 @@ function stockLabel(item) {
 }
 function RegisterView() {
   const { state, dispatch } = useStore();
-  const [activeCat, setActiveCat] = useState(state.categories[0]);
-  const [query, setQuery] = useState("");
+  const [activeCat, setActiveCat] = useState2(state.categories[0]);
+  const [query, setQuery] = useState2("");
   const order = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const table = state.tables.find((t) => t.id === order?.tableId);
   const items = useMemo2(() => {
@@ -354,37 +491,80 @@ function RegisterView() {
   const menuInStock = state.menu.filter((m) => m.category === activeCat && m.stock > 0);
   void menuInStock;
   const subtitle = order ? `${table?.name || "Unassigned"} \xB7 taken by ${order.staff}` : "Select a table from the Floor Plan to start";
-  return /* @__PURE__ */ jsxs2("div", { className: "register", children: [
-    /* @__PURE__ */ jsx3("div", { className: "view-head", children: /* @__PURE__ */ jsxs2("div", { children: [
-      /* @__PURE__ */ jsx3("h1", { children: "Register" }),
-      /* @__PURE__ */ jsx3("p", { className: "hint", children: subtitle })
-    ] }) }),
-    /* @__PURE__ */ jsxs2("div", { className: "register-body", children: [
-      /* @__PURE__ */ jsxs2("div", { className: "menu-pane", children: [
-        /* @__PURE__ */ jsx3("div", { className: "cat-tabs", children: state.categories.map((c) => /* @__PURE__ */ jsx3(
+  return /* @__PURE__ */ jsxDEV3("div", { className: "register", children: [
+    /* @__PURE__ */ jsxDEV3("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV3("div", { children: [
+      /* @__PURE__ */ jsxDEV3("h1", { children: "Register" }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 40,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV3("p", { className: "hint", children: subtitle }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 41,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 39,
+      columnNumber: 9
+    }, this) }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 38,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV3("div", { className: "register-body", children: [
+      /* @__PURE__ */ jsxDEV3("div", { className: "menu-pane", children: [
+        /* @__PURE__ */ jsxDEV3("div", { className: "cat-tabs", children: state.categories.map((c) => /* @__PURE__ */ jsxDEV3(
           "button",
           {
             className: `cat-tab ${activeCat === c ? "active" : ""}`,
             onClick: () => setActiveCat(c),
             children: c
           },
-          c
-        )) }),
-        /* @__PURE__ */ jsxs2("div", { className: "search", children: [
-          /* @__PURE__ */ jsx3(Search, { size: 16 }),
-          /* @__PURE__ */ jsx3(
+          c,
+          false,
+          {
+            fileName: "<stdin>",
+            lineNumber: 49,
+            columnNumber: 15
+          },
+          this
+        )) }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 47,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV3("div", { className: "search", children: [
+          /* @__PURE__ */ jsxDEV3(Search, { size: 16 }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 60,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV3(
             "input",
             {
               placeholder: "Search items\u2026 e.g. pizza",
               value: query,
               onChange: (e) => setQuery(e.target.value)
-            }
+            },
+            void 0,
+            false,
+            {
+              fileName: "<stdin>",
+              lineNumber: 61,
+              columnNumber: 13
+            },
+            this
           )
-        ] }),
-        /* @__PURE__ */ jsxs2("div", { className: "menu-grid", children: [
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 59,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV3("div", { className: "menu-grid", children: [
           items.map((m) => {
             const stock = stockLabel(m);
-            return /* @__PURE__ */ jsxs2(
+            return /* @__PURE__ */ jsxDEV3(
               "button",
               {
                 className: `menu-item ${stock?.cls || ""}`,
@@ -395,31 +575,86 @@ function RegisterView() {
                   }
                 },
                 children: [
-                  /* @__PURE__ */ jsx3("span", { className: "mi-name", children: m.name }),
-                  /* @__PURE__ */ jsxs2("span", { className: "mi-price", children: [
+                  /* @__PURE__ */ jsxDEV3("span", { className: "mi-name", children: m.name }, void 0, false, {
+                    fileName: "<stdin>",
+                    lineNumber: 82,
+                    columnNumber: 19
+                  }, this),
+                  /* @__PURE__ */ jsxDEV3("span", { className: "mi-price", children: [
                     "$",
                     m.price.toFixed(2)
-                  ] }),
-                  /* @__PURE__ */ jsx3("span", { className: "mi-stock", children: m.stock <= 0 ? /* @__PURE__ */ jsxs2(Fragment, { children: [
-                    /* @__PURE__ */ jsx3(PackageX, { size: 13 }),
+                  ] }, void 0, true, {
+                    fileName: "<stdin>",
+                    lineNumber: 83,
+                    columnNumber: 19
+                  }, this),
+                  /* @__PURE__ */ jsxDEV3("span", { className: "mi-stock", children: m.stock <= 0 ? /* @__PURE__ */ jsxDEV3(Fragment, { children: [
+                    /* @__PURE__ */ jsxDEV3(PackageX, { size: 13 }, void 0, false, {
+                      fileName: "<stdin>",
+                      lineNumber: 87,
+                      columnNumber: 25
+                    }, this),
                     " Out of stock"
-                  ] }) : stock ? /* @__PURE__ */ jsxs2(Fragment, { children: [
+                  ] }, void 0, true, {
+                    fileName: "<stdin>",
+                    lineNumber: 86,
+                    columnNumber: 23
+                  }, this) : stock ? /* @__PURE__ */ jsxDEV3(Fragment, { children: [
                     stock.text,
                     " (",
                     m.stock,
                     ")"
-                  ] }) : `${m.stock} in stock` })
+                  ] }, void 0, true, {
+                    fileName: "<stdin>",
+                    lineNumber: 90,
+                    columnNumber: 23
+                  }, this) : `${m.stock} in stock` }, void 0, false, {
+                    fileName: "<stdin>",
+                    lineNumber: 84,
+                    columnNumber: 19
+                  }, this)
                 ]
               },
-              m.id
+              m.id,
+              true,
+              {
+                fileName: "<stdin>",
+                lineNumber: 72,
+                columnNumber: 17
+              },
+              this
             );
           }),
-          items.length === 0 && /* @__PURE__ */ jsx3("p", { className: "empty", children: "No items in this category." })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsx3(TicketPanel, { order })
-    ] })
-  ] });
+          items.length === 0 && /* @__PURE__ */ jsxDEV3("p", { className: "empty", children: "No items in this category." }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 100,
+            columnNumber: 36
+          }, this)
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 68,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 46,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV3(TicketPanel, { order }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 104,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 45,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 37,
+    columnNumber: 5
+  }, this);
 }
 function TicketPanel({ order }) {
   const { state, dispatch } = useStore();
@@ -429,127 +664,319 @@ function TicketPanel({ order }) {
   const total = subtotal + tax;
   const canSend = items.length > 0 && order && order.status === "new";
   if (!order) {
-    return /* @__PURE__ */ jsxs2("aside", { className: "ticket empty", children: [
-      /* @__PURE__ */ jsx3(Receipt, { size: 28 }),
-      /* @__PURE__ */ jsxs2("p", { children: [
+    return /* @__PURE__ */ jsxDEV3("aside", { className: "ticket empty", children: [
+      /* @__PURE__ */ jsxDEV3(Receipt, { size: 28 }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 121,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV3("p", { children: [
         "No open order.",
-        /* @__PURE__ */ jsx3("br", {}),
+        /* @__PURE__ */ jsxDEV3("br", {}, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 122,
+          columnNumber: 26
+        }, this),
         "Tap a table to begin."
-      ] })
-    ] });
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 122,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 120,
+      columnNumber: 7
+    }, this);
   }
-  return /* @__PURE__ */ jsxs2("aside", { className: "ticket", children: [
-    /* @__PURE__ */ jsxs2("div", { className: "ticket-head", children: [
-      /* @__PURE__ */ jsxs2("div", { children: [
-        /* @__PURE__ */ jsxs2("h2", { children: [
+  return /* @__PURE__ */ jsxDEV3("aside", { className: "ticket", children: [
+    /* @__PURE__ */ jsxDEV3("div", { className: "ticket-head", children: [
+      /* @__PURE__ */ jsxDEV3("div", { children: [
+        /* @__PURE__ */ jsxDEV3("h2", { children: [
           "Table ",
           order.tableId.slice(1)
-        ] }),
-        /* @__PURE__ */ jsx3("span", { className: "ticket-staff", children: order.staff })
-      ] }),
-      /* @__PURE__ */ jsx3("span", { className: `kstatus ${order.status}`, children: cap2(order.status) })
-    ] }),
-    /* @__PURE__ */ jsxs2("div", { className: "ticket-items", children: [
-      items.length === 0 && /* @__PURE__ */ jsx3("p", { className: "empty", children: "Cart is empty \u2014 add items." }),
-      items.map((it, idx) => /* @__PURE__ */ jsxs2("div", { className: "ticket-item", children: [
-        /* @__PURE__ */ jsxs2("div", { className: "ti-top", children: [
-          /* @__PURE__ */ jsxs2("span", { className: "ti-name", children: [
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 131,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV3("span", { className: "ticket-staff", children: order.staff }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 132,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 130,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV3("span", { className: `kstatus ${order.status}`, children: cap2(order.status) }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 134,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 129,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV3("div", { className: "ticket-items", children: [
+      items.length === 0 && /* @__PURE__ */ jsxDEV3("p", { className: "empty", children: "Cart is empty \u2014 add items." }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 138,
+        columnNumber: 32
+      }, this),
+      items.map((it, idx) => /* @__PURE__ */ jsxDEV3("div", { className: "ticket-item", children: [
+        /* @__PURE__ */ jsxDEV3("div", { className: "ti-top", children: [
+          /* @__PURE__ */ jsxDEV3("span", { className: "ti-name", children: [
             it.qty,
             "\xD7 ",
             it.name
-          ] }),
-          /* @__PURE__ */ jsxs2("span", { className: "ti-price", children: [
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 142,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV3("span", { className: "ti-price", children: [
             "$",
             (it.price * it.qty).toFixed(2)
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxs2("div", { className: "ti-controls", children: [
-          /* @__PURE__ */ jsxs2("div", { className: "qty", children: [
-            /* @__PURE__ */ jsx3("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1, children: /* @__PURE__ */ jsx3(Minus, { size: 14 }) }),
-            /* @__PURE__ */ jsx3("span", { children: it.qty }),
-            /* @__PURE__ */ jsx3("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), children: /* @__PURE__ */ jsx3(Plus, { size: 14 }) })
-          ] }),
-          /* @__PURE__ */ jsx3(
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 145,
+            columnNumber: 15
+          }, this)
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 141,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV3("div", { className: "ti-controls", children: [
+          /* @__PURE__ */ jsxDEV3("div", { className: "qty", children: [
+            /* @__PURE__ */ jsxDEV3("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1, children: /* @__PURE__ */ jsxDEV3(Minus, { size: 14 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 150,
+              columnNumber: 19
+            }, this) }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 149,
+              columnNumber: 17
+            }, this),
+            /* @__PURE__ */ jsxDEV3("span", { children: it.qty }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 152,
+              columnNumber: 17
+            }, this),
+            /* @__PURE__ */ jsxDEV3("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), children: /* @__PURE__ */ jsxDEV3(Plus, { size: 14 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 154,
+              columnNumber: 19
+            }, this) }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 153,
+              columnNumber: 17
+            }, this)
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 148,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV3(
             "input",
             {
               className: "note",
               placeholder: "Add note\u2026",
               value: it.note,
               onChange: (e) => dispatch({ type: "SET_NOTE", orderId: order.id, index: idx, note: e.target.value })
-            }
+            },
+            void 0,
+            false,
+            {
+              fileName: "<stdin>",
+              lineNumber: 157,
+              columnNumber: 15
+            },
+            this
           ),
-          /* @__PURE__ */ jsx3("button", { className: "remove", onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsx3(Trash2, { size: 15 }) })
-        ] })
-      ] }, `${it.menuId}-${idx}`))
-    ] }),
-    /* @__PURE__ */ jsxs2("div", { className: "ticket-totals", children: [
-      /* @__PURE__ */ jsxs2("div", { className: "tl", children: [
-        /* @__PURE__ */ jsx3("span", { children: "Subtotal" }),
-        /* @__PURE__ */ jsxs2("span", { children: [
+          /* @__PURE__ */ jsxDEV3("button", { className: "remove", onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsxDEV3(Trash2, { size: 15 }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 164,
+            columnNumber: 17
+          }, this) }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 163,
+            columnNumber: 15
+          }, this)
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 147,
+          columnNumber: 13
+        }, this)
+      ] }, `${it.menuId}-${idx}`, true, {
+        fileName: "<stdin>",
+        lineNumber: 140,
+        columnNumber: 11
+      }, this))
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 137,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV3("div", { className: "ticket-totals", children: [
+      /* @__PURE__ */ jsxDEV3("div", { className: "tl", children: [
+        /* @__PURE__ */ jsxDEV3("span", { children: "Subtotal" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 172,
+          columnNumber: 29
+        }, this),
+        /* @__PURE__ */ jsxDEV3("span", { children: [
           "$",
           subtotal.toFixed(2)
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxs2("div", { className: "tl", children: [
-        /* @__PURE__ */ jsxs2("span", { children: [
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 172,
+          columnNumber: 50
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 172,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV3("div", { className: "tl", children: [
+        /* @__PURE__ */ jsxDEV3("span", { children: [
           "Tax (",
           (TAX_RATE * 100).toFixed(1),
           "%)"
-        ] }),
-        /* @__PURE__ */ jsxs2("span", { children: [
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 173,
+          columnNumber: 29
+        }, this),
+        /* @__PURE__ */ jsxDEV3("span", { children: [
           "$",
           tax.toFixed(2)
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxs2("div", { className: "tl total", children: [
-        /* @__PURE__ */ jsx3("span", { children: "Total" }),
-        /* @__PURE__ */ jsxs2("span", { children: [
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 173,
+          columnNumber: 78
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 173,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV3("div", { className: "tl total", children: [
+        /* @__PURE__ */ jsxDEV3("span", { children: "Total" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 174,
+          columnNumber: 35
+        }, this),
+        /* @__PURE__ */ jsxDEV3("span", { children: [
           "$",
           total.toFixed(2)
-        ] })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxs2("div", { className: "ticket-actions", children: [
-      /* @__PURE__ */ jsxs2(
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 174,
+          columnNumber: 53
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 174,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 171,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV3("div", { className: "ticket-actions", children: [
+      /* @__PURE__ */ jsxDEV3(
         "button",
         {
           className: "btn kitchen",
           disabled: !canSend,
           onClick: () => dispatch({ type: "SEND_TO_KITCHEN", orderId: order.id }),
           children: [
-            /* @__PURE__ */ jsx3(ChefHat, { size: 17 }),
+            /* @__PURE__ */ jsxDEV3(ChefHat, { size: 17 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 183,
+              columnNumber: 11
+            }, this),
             " Send to Kitchen"
           ]
-        }
+        },
+        void 0,
+        true,
+        {
+          fileName: "<stdin>",
+          lineNumber: 178,
+          columnNumber: 9
+        },
+        this
       ),
-      /* @__PURE__ */ jsxs2("div", { className: "row", children: [
-        /* @__PURE__ */ jsxs2(
+      /* @__PURE__ */ jsxDEV3("div", { className: "row", children: [
+        /* @__PURE__ */ jsxDEV3(
           "button",
           {
             className: "btn ghost",
             disabled: items.length === 0,
             onClick: () => dispatch({ type: "REQUEST_BILL", orderId: order.id }),
             children: [
-              /* @__PURE__ */ jsx3(Printer, { size: 16 }),
+              /* @__PURE__ */ jsxDEV3(Printer, { size: 16 }, void 0, false, {
+                fileName: "<stdin>",
+                lineNumber: 191,
+                columnNumber: 13
+              }, this),
               " Print Bill"
             ]
-          }
+          },
+          void 0,
+          true,
+          {
+            fileName: "<stdin>",
+            lineNumber: 186,
+            columnNumber: 11
+          },
+          this
         ),
-        /* @__PURE__ */ jsxs2(
+        /* @__PURE__ */ jsxDEV3(
           "button",
           {
             className: "btn pay",
             disabled: items.length === 0,
             onClick: () => dispatch({ type: "PAY", orderId: order.id }),
             children: [
-              /* @__PURE__ */ jsx3(CreditCard, { size: 16 }),
+              /* @__PURE__ */ jsxDEV3(CreditCard, { size: 16 }, void 0, false, {
+                fileName: "<stdin>",
+                lineNumber: 198,
+                columnNumber: 13
+              }, this),
               " Pay Now"
             ]
-          }
+          },
+          void 0,
+          true,
+          {
+            fileName: "<stdin>",
+            lineNumber: 193,
+            columnNumber: 11
+          },
+          this
         )
-      ] })
-    ] })
-  ] });
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 185,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 177,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 128,
+    columnNumber: 5
+  }, this);
 }
 function setQty(dispatch, order, index, qty) {
   dispatch({ type: "SET_QTY", orderId: order.id, index, qty: Math.max(0, qty) });
@@ -559,11 +986,11 @@ function cap2(s) {
 }
 
 // js/views/kds.jsx
-import { useEffect as useEffect2, useState as useState2 } from "react";
+import { jsxDEV as jsxDEV4 } from "react/jsx-dev-runtime";
+import { useEffect as useEffect2, useState as useState3 } from "react";
 import { ChefHat as ChefHat2, CookingPot, Check, X, Timer } from "lucide-react";
-import { jsx as jsx4, jsxs as jsxs3 } from "react/jsx-runtime";
 function useNow() {
-  const [now, setNow] = useState2(() => Date.now());
+  const [now, setNow] = useState3(() => Date.now());
   useEffect2(() => {
     const id = setInterval(() => setNow(Date.now()), 1e3);
     return () => clearInterval(id);
@@ -583,93 +1010,257 @@ function KdsView() {
   const orders = useKitchenOrders(state);
   const now = useNow();
   const tableName = (id) => state.tables.find((t) => t.id === id)?.name || id;
-  return /* @__PURE__ */ jsxs3("div", { className: "kds", children: [
-    /* @__PURE__ */ jsxs3("div", { className: "view-head", children: [
-      /* @__PURE__ */ jsxs3("div", { children: [
-        /* @__PURE__ */ jsx4("h1", { children: "Kitchen Display" }),
-        /* @__PURE__ */ jsx4("p", { className: "hint", children: "Orders 15+ min are flagged red." })
-      ] }),
-      /* @__PURE__ */ jsxs3("span", { className: "kds-count", children: [
+  return /* @__PURE__ */ jsxDEV4("div", { className: "kds", children: [
+    /* @__PURE__ */ jsxDEV4("div", { className: "view-head", children: [
+      /* @__PURE__ */ jsxDEV4("div", { children: [
+        /* @__PURE__ */ jsxDEV4("h1", { children: "Kitchen Display" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 33,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV4("p", { className: "hint", children: "Orders 15+ min are flagged red." }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 34,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 32,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV4("span", { className: "kds-count", children: [
         orders.length,
         " live ticket",
         orders.length !== 1 ? "s" : ""
-      ] })
-    ] }),
-    orders.length === 0 ? /* @__PURE__ */ jsxs3("div", { className: "kds-empty", children: [
-      /* @__PURE__ */ jsx4(ChefHat2, { size: 40 }),
-      /* @__PURE__ */ jsx4("p", { children: "All caught up \u2014 no active tickets." })
-    ] }) : /* @__PURE__ */ jsx4("div", { className: "kds-grid", children: orders.map((o) => {
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 36,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 31,
+      columnNumber: 7
+    }, this),
+    orders.length === 0 ? /* @__PURE__ */ jsxDEV4("div", { className: "kds-empty", children: [
+      /* @__PURE__ */ jsxDEV4(ChefHat2, { size: 40 }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 41,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV4("p", { children: "All caught up \u2014 no active tickets." }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 42,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 40,
+      columnNumber: 9
+    }, this) : /* @__PURE__ */ jsxDEV4("div", { className: "kds-grid", children: orders.map((o) => {
       const elapsed = now - o.createdAt;
       const red = elapsed > 15 * 60 * 1e3;
-      return /* @__PURE__ */ jsxs3("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
-        /* @__PURE__ */ jsxs3("header", { className: "k-head", children: [
-          /* @__PURE__ */ jsxs3("div", { children: [
-            /* @__PURE__ */ jsx4("h3", { children: tableName(o.tableId) }),
-            /* @__PURE__ */ jsx4("span", { className: "k-staff", children: o.staff })
-          ] }),
-          /* @__PURE__ */ jsxs3("div", { className: `k-timer ${red ? "hot" : ""}`, children: [
-            /* @__PURE__ */ jsx4(Timer, { size: 15 }),
+      return /* @__PURE__ */ jsxDEV4("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
+        /* @__PURE__ */ jsxDEV4("header", { className: "k-head", children: [
+          /* @__PURE__ */ jsxDEV4("div", { children: [
+            /* @__PURE__ */ jsxDEV4("h3", { children: tableName(o.tableId) }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 53,
+              columnNumber: 21
+            }, this),
+            /* @__PURE__ */ jsxDEV4("span", { className: "k-staff", children: o.staff }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 54,
+              columnNumber: 21
+            }, this)
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 52,
+            columnNumber: 19
+          }, this),
+          /* @__PURE__ */ jsxDEV4("div", { className: `k-timer ${red ? "hot" : ""}`, children: [
+            /* @__PURE__ */ jsxDEV4(Timer, { size: 15 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 57,
+              columnNumber: 21
+            }, this),
             fmt(elapsed)
-          ] })
-        ] }),
-        /* @__PURE__ */ jsx4("ul", { className: "k-items", children: o.items.map((it, i) => /* @__PURE__ */ jsxs3("li", { children: [
-          /* @__PURE__ */ jsxs3("span", { className: "k-qty", children: [
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 56,
+            columnNumber: 19
+          }, this)
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 51,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV4("ul", { className: "k-items", children: o.items.map((it, i) => /* @__PURE__ */ jsxDEV4("li", { children: [
+          /* @__PURE__ */ jsxDEV4("span", { className: "k-qty", children: [
             it.qty,
             "\xD7"
-          ] }),
-          /* @__PURE__ */ jsxs3("span", { className: "k-line", children: [
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 65,
+            columnNumber: 23
+          }, this),
+          /* @__PURE__ */ jsxDEV4("span", { className: "k-line", children: [
             it.name,
-            it.note && /* @__PURE__ */ jsx4("em", { className: "k-note", children: it.note })
-          ] })
-        ] }, i)) }),
-        /* @__PURE__ */ jsxs3("footer", { className: "k-actions", children: [
-          o.status === "sent" && /* @__PURE__ */ jsxs3("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "preparing" }), children: [
-            /* @__PURE__ */ jsx4(CookingPot, { size: 16 }),
+            it.note && /* @__PURE__ */ jsxDEV4("em", { className: "k-note", children: it.note }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 68,
+              columnNumber: 37
+            }, this)
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 66,
+            columnNumber: 23
+          }, this)
+        ] }, i, true, {
+          fileName: "<stdin>",
+          lineNumber: 64,
+          columnNumber: 21
+        }, this)) }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 62,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV4("footer", { className: "k-actions", children: [
+          o.status === "sent" && /* @__PURE__ */ jsxDEV4("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "preparing" }), children: [
+            /* @__PURE__ */ jsxDEV4(CookingPot, { size: 16 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 77,
+              columnNumber: 23
+            }, this),
             " Preparing"
-          ] }),
-          o.status === "preparing" && /* @__PURE__ */ jsxs3("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "ready" }), children: [
-            /* @__PURE__ */ jsx4(Check, { size: 16 }),
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 76,
+            columnNumber: 21
+          }, this),
+          o.status === "preparing" && /* @__PURE__ */ jsxDEV4("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "ready" }), children: [
+            /* @__PURE__ */ jsxDEV4(Check, { size: 16 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 82,
+              columnNumber: 23
+            }, this),
             " Mark Ready"
-          ] }),
-          o.status === "ready" && /* @__PURE__ */ jsxs3("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "served" }), children: [
-            /* @__PURE__ */ jsx4(Check, { size: 16 }),
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 81,
+            columnNumber: 21
+          }, this),
+          o.status === "ready" && /* @__PURE__ */ jsxDEV4("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "served" }), children: [
+            /* @__PURE__ */ jsxDEV4(Check, { size: 16 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 87,
+              columnNumber: 23
+            }, this),
             " Served"
-          ] }),
-          /* @__PURE__ */ jsxs3("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id }), children: [
-            /* @__PURE__ */ jsx4(X, { size: 16 }),
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 86,
+            columnNumber: 21
+          }, this),
+          /* @__PURE__ */ jsxDEV4("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id }), children: [
+            /* @__PURE__ */ jsxDEV4(X, { size: 16 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 91,
+              columnNumber: 21
+            }, this),
             " Dismiss"
-          ] })
-        ] })
-      ] }, o.id);
-    }) })
-  ] });
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 90,
+            columnNumber: 19
+          }, this)
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 74,
+          columnNumber: 17
+        }, this)
+      ] }, o.id, true, {
+        fileName: "<stdin>",
+        lineNumber: 50,
+        columnNumber: 15
+      }, this);
+    }) }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 45,
+      columnNumber: 9
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 30,
+    columnNumber: 5
+  }, this);
 }
 
 // js/views/settings.jsx
-import { useState as useState3 } from "react";
+import { jsxDEV as jsxDEV5 } from "react/jsx-dev-runtime";
+import { useState as useState4 } from "react";
 import { Plus as Plus2, Trash2 as Trash22, User, Square } from "lucide-react";
-import { jsx as jsx5, jsxs as jsxs4 } from "react/jsx-runtime";
 function SettingsView() {
-  return /* @__PURE__ */ jsxs4("div", { className: "settings", children: [
-    /* @__PURE__ */ jsx5("div", { className: "view-head", children: /* @__PURE__ */ jsxs4("div", { children: [
-      /* @__PURE__ */ jsx5("h1", { children: "Admin" }),
-      /* @__PURE__ */ jsx5("p", { className: "hint", children: "Manage menu, stock, staff and floor plan." })
-    ] }) }),
-    /* @__PURE__ */ jsxs4("div", { className: "setting-tabs-grid", children: [
-      /* @__PURE__ */ jsx5(MenuManager, {}),
-      /* @__PURE__ */ jsx5(StaffManager, {}),
-      /* @__PURE__ */ jsx5(FloorManager, {}),
-      /* @__PURE__ */ jsx5(InventoryPanel, {})
-    ] })
-  ] });
+  return /* @__PURE__ */ jsxDEV5("div", { className: "settings", children: [
+    /* @__PURE__ */ jsxDEV5("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV5("div", { children: [
+      /* @__PURE__ */ jsxDEV5("h1", { children: "Admin" }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 10,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV5("p", { className: "hint", children: "Manage menu, stock, staff and floor plan." }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 11,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 9,
+      columnNumber: 9
+    }, this) }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 8,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV5("div", { className: "setting-tabs-grid", children: [
+      /* @__PURE__ */ jsxDEV5(MenuManager, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 15,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV5(StaffManager, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 16,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV5(FloorManager, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 17,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV5(InventoryPanel, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 18,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 14,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 7,
+    columnNumber: 5
+  }, this);
 }
 function MenuManager() {
   const { state, dispatch } = useStore();
-  const [name, setName] = useState3("");
-  const [category, setCategory] = useState3(state.categories[0]);
-  const [price, setPrice] = useState3("");
-  const [stock, setStock] = useState3("");
-  const [editing, setEditing] = useState3(null);
+  const [name, setName] = useState4("");
+  const [category, setCategory] = useState4(state.categories[0]);
+  const [price, setPrice] = useState4("");
+  const [stock, setStock] = useState4("");
+  const [editing, setEditing] = useState4(null);
   const submit = () => {
     if (!name.trim()) return;
     const p = Math.max(0, parseFloat(price) || 0);
@@ -691,43 +1282,135 @@ function MenuManager() {
     setPrice(String(item.price));
     setStock(String(item.stock));
   };
-  return /* @__PURE__ */ jsxs4("section", { className: "panel", children: [
-    /* @__PURE__ */ jsx5("h2", { children: "Menu" }),
-    /* @__PURE__ */ jsxs4("div", { className: "form", children: [
-      /* @__PURE__ */ jsx5("input", { placeholder: "Item name", value: name, onChange: (e) => setName(e.target.value) }),
-      /* @__PURE__ */ jsxs4("div", { className: "form-row", children: [
-        /* @__PURE__ */ jsx5("select", { value: category, onChange: (e) => setCategory(e.target.value), children: state.categories.map((c) => /* @__PURE__ */ jsx5("option", { children: c }, c)) }),
-        /* @__PURE__ */ jsx5("input", { type: "number", min: "0", step: "0.01", placeholder: "Price", value: price, onChange: (e) => setPrice(e.target.value) }),
-        /* @__PURE__ */ jsx5("input", { type: "number", min: "0", placeholder: "Stock", value: stock, onChange: (e) => setStock(e.target.value) })
-      ] }),
-      /* @__PURE__ */ jsxs4("div", { className: "form-row", children: [
-        /* @__PURE__ */ jsxs4("button", { className: "btn primary", onClick: submit, children: [
-          /* @__PURE__ */ jsx5(Plus2, { size: 16 }),
+  return /* @__PURE__ */ jsxDEV5("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV5("h2", { children: "Menu" }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 57,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV5("div", { className: "form", children: [
+      /* @__PURE__ */ jsxDEV5("input", { placeholder: "Item name", value: name, onChange: (e) => setName(e.target.value) }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 59,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV5("select", { value: category, onChange: (e) => setCategory(e.target.value), children: state.categories.map((c) => /* @__PURE__ */ jsxDEV5("option", { children: c }, c, false, {
+          fileName: "<stdin>",
+          lineNumber: 63,
+          columnNumber: 15
+        }, this)) }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 61,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV5("input", { type: "number", min: "0", step: "0.01", placeholder: "Price", value: price, onChange: (e) => setPrice(e.target.value) }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 66,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV5("input", { type: "number", min: "0", placeholder: "Stock", value: stock, onChange: (e) => setStock(e.target.value) }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 67,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 60,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV5("button", { className: "btn primary", onClick: submit, children: [
+          /* @__PURE__ */ jsxDEV5(Plus2, { size: 16 }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 71,
+            columnNumber: 13
+          }, this),
           " ",
           editing ? "Update item" : "Add item"
-        ] }),
-        editing && /* @__PURE__ */ jsx5("button", { className: "btn ghost", onClick: () => {
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 70,
+          columnNumber: 11
+        }, this),
+        editing && /* @__PURE__ */ jsxDEV5("button", { className: "btn ghost", onClick: () => {
           setEditing(null);
           setName("");
           setPrice("");
           setStock("");
-        }, children: "Cancel" })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsx5("div", { className: "panel-list", children: state.menu.map((m) => /* @__PURE__ */ jsxs4("div", { className: "pl-row", children: [
-      /* @__PURE__ */ jsxs4("span", { className: "pl-main", children: [
-        /* @__PURE__ */ jsx5("span", { className: "pl-name", children: m.name }),
-        /* @__PURE__ */ jsx5("span", { className: "pl-cat", children: m.category })
-      ] }),
-      /* @__PURE__ */ jsx5("span", { className: "pl-stock", "data-kind": stockBadge(m.stock), children: m.stock <= 0 ? "Out" : m.stock <= LOW_STOCK ? `Low \xB7 ${m.stock}` : `${m.stock} in stock` }),
-      /* @__PURE__ */ jsxs4("span", { className: "pl-price", children: [
+        }, children: "Cancel" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 73,
+          columnNumber: 23
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 69,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 58,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV5("div", { className: "panel-list", children: state.menu.map((m) => /* @__PURE__ */ jsxDEV5("div", { className: "pl-row", children: [
+      /* @__PURE__ */ jsxDEV5("span", { className: "pl-main", children: [
+        /* @__PURE__ */ jsxDEV5("span", { className: "pl-name", children: m.name }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 81,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV5("span", { className: "pl-cat", children: m.category }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 82,
+          columnNumber: 15
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 80,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV5("span", { className: "pl-stock", "data-kind": stockBadge(m.stock), children: m.stock <= 0 ? "Out" : m.stock <= LOW_STOCK ? `Low \xB7 ${m.stock}` : `${m.stock} in stock` }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 84,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV5("span", { className: "pl-price", children: [
         "$",
         m.price.toFixed(2)
-      ] }),
-      /* @__PURE__ */ jsx5("button", { className: "pl-edit", onClick: () => startEdit(m), children: "Edit" }),
-      /* @__PURE__ */ jsx5("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_ITEM", id: m.id }), children: /* @__PURE__ */ jsx5(Trash22, { size: 15 }) })
-    ] }, m.id)) })
-  ] });
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 87,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV5("button", { className: "pl-edit", onClick: () => startEdit(m), children: "Edit" }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 88,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV5("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_ITEM", id: m.id }), children: /* @__PURE__ */ jsxDEV5(Trash22, { size: 15 }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 90,
+        columnNumber: 15
+      }, this) }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 89,
+        columnNumber: 13
+      }, this)
+    ] }, m.id, true, {
+      fileName: "<stdin>",
+      lineNumber: 79,
+      columnNumber: 11
+    }, this)) }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 77,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 56,
+    columnNumber: 5
+  }, this);
 }
 function stockBadge(stock) {
   if (stock <= 0) return "out";
@@ -741,7 +1424,7 @@ function stockBadgeInfo(stock) {
 }
 function StaffManager() {
   const { state, dispatch } = useStore();
-  const [name, setName] = useState3("");
+  const [name, setName] = useState4("");
   const add = () => {
     const n = name.trim();
     if (n && !state.staff.includes(n)) {
@@ -749,31 +1432,91 @@ function StaffManager() {
       setName("");
     }
   };
-  return /* @__PURE__ */ jsxs4("section", { className: "panel", children: [
-    /* @__PURE__ */ jsx5("h2", { children: "Staff" }),
-    /* @__PURE__ */ jsx5("div", { className: "form", onSubmit: (e) => e.preventDefault(), children: /* @__PURE__ */ jsxs4("div", { className: "form-row", children: [
-      /* @__PURE__ */ jsx5("input", { placeholder: "Add waitstaff name", value: name, onChange: (e) => setName(e.target.value), onKeyDown: (e) => e.key === "Enter" && add() }),
-      /* @__PURE__ */ jsxs4("button", { className: "btn primary", onClick: add, children: [
-        /* @__PURE__ */ jsx5(Plus2, { size: 16 }),
+  return /* @__PURE__ */ jsxDEV5("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV5("h2", { children: "Staff" }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 118,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV5("div", { className: "form", onSubmit: (e) => e.preventDefault(), children: /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
+      /* @__PURE__ */ jsxDEV5("input", { placeholder: "Add waitstaff name", value: name, onChange: (e) => setName(e.target.value), onKeyDown: (e) => e.key === "Enter" && add() }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 121,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV5("button", { className: "btn primary", onClick: add, children: [
+        /* @__PURE__ */ jsxDEV5(Plus2, { size: 16 }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 123,
+          columnNumber: 13
+        }, this),
         " Add"
-      ] })
-    ] }) }),
-    /* @__PURE__ */ jsx5("div", { className: "panel-list", children: state.staff.map((s) => /* @__PURE__ */ jsxs4("div", { className: "pl-row", children: [
-      /* @__PURE__ */ jsxs4("span", { className: "pl-main", children: [
-        /* @__PURE__ */ jsx5(User, { size: 14 }),
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 122,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 120,
+      columnNumber: 9
+    }, this) }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 119,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV5("div", { className: "panel-list", children: state.staff.map((s) => /* @__PURE__ */ jsxDEV5("div", { className: "pl-row", children: [
+      /* @__PURE__ */ jsxDEV5("span", { className: "pl-main", children: [
+        /* @__PURE__ */ jsxDEV5(User, { size: 14 }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 130,
+          columnNumber: 39
+        }, this),
         " ",
-        /* @__PURE__ */ jsx5("span", { className: "pl-name", children: s })
-      ] }),
-      /* @__PURE__ */ jsx5("span", { className: "pl-stock ok", children: s === state.currentStaff ? "Active" : "" }),
-      /* @__PURE__ */ jsx5("button", { className: "pl-del", onClick: () => dispatch({ type: "REMOVE_STAFF", name: s }), children: /* @__PURE__ */ jsx5(Trash22, { size: 15 }) })
-    ] }, s)) })
-  ] });
+        /* @__PURE__ */ jsxDEV5("span", { className: "pl-name", children: s }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 130,
+          columnNumber: 58
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 130,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV5("span", { className: "pl-stock ok", children: s === state.currentStaff ? "Active" : "" }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 131,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV5("button", { className: "pl-del", onClick: () => dispatch({ type: "REMOVE_STAFF", name: s }), children: /* @__PURE__ */ jsxDEV5(Trash22, { size: 15 }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 133,
+        columnNumber: 15
+      }, this) }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 132,
+        columnNumber: 13
+      }, this)
+    ] }, s, true, {
+      fileName: "<stdin>",
+      lineNumber: 129,
+      columnNumber: 11
+    }, this)) }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 127,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 117,
+    columnNumber: 5
+  }, this);
 }
 function FloorManager() {
   const { state, dispatch } = useStore();
-  const [name, setName] = useState3("");
-  const [zone, setZone] = useState3("Main");
-  const [caps, setCaps] = useState3("4");
+  const [name, setName] = useState4("");
+  const [zone, setZone] = useState4("Main");
+  const [caps, setCaps] = useState4("4");
   const add = () => {
     const n = name.trim();
     if (n) {
@@ -781,58 +1524,169 @@ function FloorManager() {
       setName("");
     }
   };
-  return /* @__PURE__ */ jsxs4("section", { className: "panel", children: [
-    /* @__PURE__ */ jsx5("h2", { children: "Floor Plan" }),
-    /* @__PURE__ */ jsxs4("div", { className: "form", children: [
-      /* @__PURE__ */ jsxs4("div", { className: "form-row", children: [
-        /* @__PURE__ */ jsx5("input", { placeholder: "Table name (e.g. Table 7)", value: name, onChange: (e) => setName(e.target.value) }),
-        /* @__PURE__ */ jsx5("input", { type: "number", min: "1", value: caps, onChange: (e) => setCaps(e.target.value), title: "Seats" })
-      ] }),
-      /* @__PURE__ */ jsxs4("div", { className: "form-row", children: [
-        /* @__PURE__ */ jsx5("select", { value: zone, onChange: (e) => setZone(e.target.value), children: ["Main", "Patio", "Bar", "Window"].map((z) => /* @__PURE__ */ jsx5("option", { children: z }, z)) }),
-        /* @__PURE__ */ jsxs4("button", { className: "btn primary", onClick: add, children: [
-          /* @__PURE__ */ jsx5(Plus2, { size: 16 }),
+  return /* @__PURE__ */ jsxDEV5("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV5("h2", { children: "Floor Plan" }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 158,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV5("div", { className: "form", children: [
+      /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV5("input", { placeholder: "Table name (e.g. Table 7)", value: name, onChange: (e) => setName(e.target.value) }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 161,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV5("input", { type: "number", min: "1", value: caps, onChange: (e) => setCaps(e.target.value), title: "Seats" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 162,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 160,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV5("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV5("select", { value: zone, onChange: (e) => setZone(e.target.value), children: ["Main", "Patio", "Bar", "Window"].map((z) => /* @__PURE__ */ jsxDEV5("option", { children: z }, z, false, {
+          fileName: "<stdin>",
+          lineNumber: 167,
+          columnNumber: 15
+        }, this)) }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 165,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV5("button", { className: "btn primary", onClick: add, children: [
+          /* @__PURE__ */ jsxDEV5(Plus2, { size: 16 }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 171,
+            columnNumber: 13
+          }, this),
           " Add table"
-        ] })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsx5("div", { className: "panel-list", children: state.tables.map((t) => /* @__PURE__ */ jsxs4("div", { className: "pl-row", children: [
-      /* @__PURE__ */ jsxs4("span", { className: "pl-main", children: [
-        /* @__PURE__ */ jsx5(Square, { size: 14 }),
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 170,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 164,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 159,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV5("div", { className: "panel-list", children: state.tables.map((t) => /* @__PURE__ */ jsxDEV5("div", { className: "pl-row", children: [
+      /* @__PURE__ */ jsxDEV5("span", { className: "pl-main", children: [
+        /* @__PURE__ */ jsxDEV5(Square, { size: 14 }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 179,
+          columnNumber: 39
+        }, this),
         " ",
-        /* @__PURE__ */ jsx5("span", { className: "pl-name", children: t.name })
-      ] }),
-      /* @__PURE__ */ jsxs4("span", { className: "pl-cat", children: [
+        /* @__PURE__ */ jsxDEV5("span", { className: "pl-name", children: t.name }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 179,
+          columnNumber: 60
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 179,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV5("span", { className: "pl-cat", children: [
         t.zone,
         " \xB7 ",
         t.capacity,
         " seats"
-      ] }),
-      /* @__PURE__ */ jsx5("button", { className: "pl-edit", onClick: () => {
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 180,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV5("button", { className: "pl-edit", onClick: () => {
         const nn = prompt(`Rename ${t.name}:`, t.name);
         if (nn && nn.trim()) dispatch({ type: "RENAME_TABLE", id: t.id, name: nn.trim() });
-      }, children: "Rename" }),
-      /* @__PURE__ */ jsx5("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_TABLE", id: t.id }), children: /* @__PURE__ */ jsx5(Trash22, { size: 15 }) })
-    ] }, t.id)) })
-  ] });
+      }, children: "Rename" }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 181,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV5("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_TABLE", id: t.id }), children: /* @__PURE__ */ jsxDEV5(Trash22, { size: 15 }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 185,
+        columnNumber: 15
+      }, this) }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 184,
+        columnNumber: 13
+      }, this)
+    ] }, t.id, true, {
+      fileName: "<stdin>",
+      lineNumber: 178,
+      columnNumber: 11
+    }, this)) }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 176,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 157,
+    columnNumber: 5
+  }, this);
 }
 function InventoryPanel() {
   const { state } = useStore();
-  return /* @__PURE__ */ jsxs4("section", { className: "panel", children: [
-    /* @__PURE__ */ jsx5("h2", { children: "Inventory" }),
-    /* @__PURE__ */ jsx5("div", { className: "panel-list", children: state.menu.map((m) => {
+  return /* @__PURE__ */ jsxDEV5("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV5("h2", { children: "Inventory" }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 198,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV5("div", { className: "panel-list", children: state.menu.map((m) => {
       const b = stockBadgeInfo(m.stock);
-      return /* @__PURE__ */ jsxs4("div", { className: "pl-row", children: [
-        /* @__PURE__ */ jsx5("span", { className: "pl-main", children: /* @__PURE__ */ jsx5("span", { className: "pl-name", children: m.name }) }),
-        /* @__PURE__ */ jsx5("span", { className: `badge ${b.cls}`, children: b.label }),
-        /* @__PURE__ */ jsx5("span", { className: "pl-stock", "data-kind": b.cls, children: m.stock })
-      ] }, m.id);
-    }) })
-  ] });
+      return /* @__PURE__ */ jsxDEV5("div", { className: "pl-row", children: [
+        /* @__PURE__ */ jsxDEV5("span", { className: "pl-main", children: /* @__PURE__ */ jsxDEV5("span", { className: "pl-name", children: m.name }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 204,
+          columnNumber: 41
+        }, this) }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 204,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV5("span", { className: `badge ${b.cls}`, children: b.label }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 205,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV5("span", { className: "pl-stock", "data-kind": b.cls, children: m.stock }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 206,
+          columnNumber: 15
+        }, this)
+      ] }, m.id, true, {
+        fileName: "<stdin>",
+        lineNumber: 203,
+        columnNumber: 13
+      }, this);
+    }) }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 199,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 197,
+    columnNumber: 5
+  }, this);
 }
 
 // js/app.jsx
-import { jsx as jsx6, jsxs as jsxs5 } from "react/jsx-runtime";
 var VIEWS = [
   { key: "floorplan", name: "Tables", icon: LayoutDashboard },
   { key: "register", name: "Register", icon: ShoppingCart },
@@ -840,7 +1694,7 @@ var VIEWS = [
   { key: "settings", name: "Admin", icon: Printer2 }
 ];
 function useClock() {
-  const [now, setNow] = useState4(() => /* @__PURE__ */ new Date());
+  const [now, setNow] = useState5(() => /* @__PURE__ */ new Date());
   useEffect3(() => {
     const id = setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
     return () => clearInterval(id);
@@ -848,7 +1702,7 @@ function useClock() {
   return now;
 }
 function ThemeToggle({ theme, setTheme }) {
-  return /* @__PURE__ */ jsx6(
+  return /* @__PURE__ */ jsxDEV6(
     "button",
     {
       className: "icon-btn",
@@ -858,8 +1712,24 @@ function ThemeToggle({ theme, setTheme }) {
         document.documentElement.setAttribute("data-theme", next);
       },
       title: "Toggle theme",
-      children: theme === "dark" ? /* @__PURE__ */ jsx6(Sun, { size: 18 }) : /* @__PURE__ */ jsx6(Moon, { size: 18 })
-    }
+      children: theme === "dark" ? /* @__PURE__ */ jsxDEV6(Sun, { size: 18 }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 47,
+        columnNumber: 27
+      }, this) : /* @__PURE__ */ jsxDEV6(Moon, { size: 18 }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 47,
+        columnNumber: 47
+      }, this)
+    },
+    void 0,
+    false,
+    {
+      fileName: "<stdin>",
+      lineNumber: 38,
+      columnNumber: 5
+    },
+    this
   );
 }
 function Header({ view, setView, theme, setTheme }) {
@@ -869,55 +1739,179 @@ function Header({ view, setView, theme, setTheme }) {
   const activeOrder = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const liveCount = Object.values(ordersByTable).filter((o) => o.items.length && o.status !== "new").length;
   const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  return /* @__PURE__ */ jsxs5("header", { className: "header", children: [
-    /* @__PURE__ */ jsxs5("div", { className: "brand", children: [
-      /* @__PURE__ */ jsx6("span", { className: "brand-mark", children: "T" }),
-      /* @__PURE__ */ jsx6("span", { className: "brand-name", children: "Tetra POS" })
-    ] }),
-    /* @__PURE__ */ jsx6("nav", { className: "nav", children: VIEWS.map((v) => {
+  return /* @__PURE__ */ jsxDEV6("header", { className: "header", children: [
+    /* @__PURE__ */ jsxDEV6("div", { className: "brand", children: [
+      /* @__PURE__ */ jsxDEV6("span", { className: "brand-mark", children: "T" }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 64,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV6("span", { className: "brand-name", children: "Tetra POS" }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 65,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 63,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV6("nav", { className: "nav", children: VIEWS.map((v) => {
       const Icon = v.icon;
-      return /* @__PURE__ */ jsxs5("button", { className: `nav-btn ${view === v.key ? "active" : ""}`, onClick: () => setView(v.key), children: [
-        /* @__PURE__ */ jsx6(Icon, { size: 18 }),
-        /* @__PURE__ */ jsx6("span", { children: v.name })
-      ] }, v.key);
-    }) }),
-    /* @__PURE__ */ jsxs5("div", { className: "header-right", children: [
-      /* @__PURE__ */ jsxs5("div", { className: "status-chip", "data-kind": liveCount ? "live" : "idle", children: [
-        /* @__PURE__ */ jsx6("span", { className: "status-dot" }),
-        /* @__PURE__ */ jsx6("span", { children: liveCount ? `${liveCount} live` : "Idle" })
-      ] }),
-      /* @__PURE__ */ jsx6("div", { className: "order-label", children: activeOrder ? activeOrder.status === "new" ? "New order" : `${activeOrder.id.toUpperCase()} \xB7 ${cap3(activeOrder.status)}` : "No active order" }),
-      /* @__PURE__ */ jsxs5("label", { className: "staff-switch", children: [
-        /* @__PURE__ */ jsx6(User2, { size: 16 }),
-        /* @__PURE__ */ jsx6("select", { value: state.currentStaff, onChange: (e) => dispatch({ type: "SET_STAFF", name: e.target.value }), children: state.staff.map((s) => /* @__PURE__ */ jsx6("option", { value: s, children: s }, s)) }),
-        /* @__PURE__ */ jsx6(ChevronDown, { size: 14 })
-      ] }),
-      /* @__PURE__ */ jsxs5("div", { className: "clock-chip", children: [
-        /* @__PURE__ */ jsx6(Clock, { size: 15 }),
-        /* @__PURE__ */ jsx6("span", { children: timeStr })
-      ] }),
-      /* @__PURE__ */ jsx6(ThemeToggle, { theme, setTheme })
-    ] })
-  ] });
+      return /* @__PURE__ */ jsxDEV6("button", { className: `nav-btn ${view === v.key ? "active" : ""}`, onClick: () => setView(v.key), children: [
+        /* @__PURE__ */ jsxDEV6(Icon, { size: 18 }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 73,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV6("span", { children: v.name }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 74,
+          columnNumber: 15
+        }, this)
+      ] }, v.key, true, {
+        fileName: "<stdin>",
+        lineNumber: 72,
+        columnNumber: 13
+      }, this);
+    }) }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 68,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV6("div", { className: "header-right", children: [
+      /* @__PURE__ */ jsxDEV6("div", { className: "status-chip", "data-kind": liveCount ? "live" : "idle", children: [
+        /* @__PURE__ */ jsxDEV6("span", { className: "status-dot" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 82,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV6("span", { children: liveCount ? `${liveCount} live` : "Idle" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 83,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 81,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV6("div", { className: "order-label", children: activeOrder ? activeOrder.status === "new" ? "New order" : `${activeOrder.id.toUpperCase()} \xB7 ${cap3(activeOrder.status)}` : "No active order" }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 86,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV6("label", { className: "staff-switch", children: [
+        /* @__PURE__ */ jsxDEV6(User2, { size: 16 }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 95,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV6("select", { value: state.currentStaff, onChange: (e) => dispatch({ type: "SET_STAFF", name: e.target.value }), children: state.staff.map((s) => /* @__PURE__ */ jsxDEV6("option", { value: s, children: s }, s, false, {
+          fileName: "<stdin>",
+          lineNumber: 98,
+          columnNumber: 15
+        }, this)) }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 96,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV6(ChevronDown, { size: 14 }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 103,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 94,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV6("div", { className: "clock-chip", children: [
+        /* @__PURE__ */ jsxDEV6(Clock, { size: 15 }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 107,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV6("span", { children: timeStr }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 108,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 106,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV6(ThemeToggle, { theme, setTheme }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 111,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 80,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 62,
+    columnNumber: 5
+  }, this);
 }
 function cap3(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function Shell() {
-  const [view, setView] = useState4("floorplan");
-  const [theme, setTheme] = useState4(
+  const [view, setView] = useState5("floorplan");
+  const [theme, setTheme] = useState5(
     () => document.documentElement.getAttribute("data-theme") || "dark"
   );
-  return /* @__PURE__ */ jsxs5("div", { className: "app", children: [
-    /* @__PURE__ */ jsx6(Header, { view, setView, theme, setTheme }),
-    /* @__PURE__ */ jsxs5("main", { className: "main", children: [
-      view === "floorplan" && /* @__PURE__ */ jsx6(FloorPlanView, { setView }),
-      view === "register" && /* @__PURE__ */ jsx6(RegisterView, {}),
-      view === "kds" && /* @__PURE__ */ jsx6(KdsView, {}),
-      view === "settings" && /* @__PURE__ */ jsx6(SettingsView, {})
-    ] })
-  ] });
+  return /* @__PURE__ */ jsxDEV6("div", { className: "app", children: [
+    /* @__PURE__ */ jsxDEV6(Header, { view, setView, theme, setTheme }, void 0, false, {
+      fileName: "<stdin>",
+      lineNumber: 129,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV6("main", { className: "main", children: [
+      view === "floorplan" && /* @__PURE__ */ jsxDEV6(FloorPlanView, { setView }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 131,
+        columnNumber: 34
+      }, this),
+      view === "register" && /* @__PURE__ */ jsxDEV6(RegisterView, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 132,
+        columnNumber: 33
+      }, this),
+      view === "kds" && /* @__PURE__ */ jsxDEV6(KdsView, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 133,
+        columnNumber: 28
+      }, this),
+      view === "settings" && /* @__PURE__ */ jsxDEV6(SettingsView, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 134,
+        columnNumber: 33
+      }, this)
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 130,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "<stdin>",
+    lineNumber: 128,
+    columnNumber: 5
+  }, this);
 }
 createRoot(document.getElementById("root")).render(
-  /* @__PURE__ */ jsx6(StoreProvider, { children: /* @__PURE__ */ jsx6(Shell, {}) })
+  /* @__PURE__ */ jsxDEV6(StoreProvider, { children: /* @__PURE__ */ jsxDEV6(Shell, {}, void 0, false, {
+    fileName: "<stdin>",
+    lineNumber: 142,
+    columnNumber: 5
+  }) }, void 0, false, {
+    fileName: "<stdin>",
+    lineNumber: 141,
+    columnNumber: 3
+  })
 );
