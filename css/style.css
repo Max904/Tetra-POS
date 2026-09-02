@@ -531,6 +531,22 @@ select:focus {
   color: var(--red);
 }
 
+.ticket-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.note:disabled {
+  opacity: 0.5;
+}
+
 .ticket-items {
   display: flex;
   flex-direction: column;
