@@ -22,6 +22,7 @@ function RegisterView() {
   }, [state.menu, activeCat, query]);
   const menuInStock = state.menu.filter((m) => m.category === activeCat && m.stock > 0);
   void menuInStock;
+  const canEdit = !!order && order.status === "new";
   const subtitle = order ? `${table?.name || "Unassigned"} \xB7 taken by ${order.staff}` : "Select a table from the Floor Plan to start";
   return /* @__PURE__ */ jsxDEV("div", { className: "register", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
@@ -100,9 +101,9 @@ function RegisterView() {
               "button",
               {
                 className: `menu-item ${stock?.cls || ""}`,
-                disabled: !order || m.stock <= 0,
+                disabled: !order || !canEdit || m.stock <= 0,
                 onClick: () => {
-                  if (order && m.stock > 0) {
+                  if (order && canEdit && m.stock > 0) {
                     dispatch({ type: "ADD_TO_ORDER", orderId: order.id, menuId: m.id, name: m.name, price: m.price });
                   }
                 },
@@ -172,7 +173,7 @@ function RegisterView() {
         lineNumber: 46,
         columnNumber: 9
       }, this),
-      /* @__PURE__ */ jsxDEV(TicketPanel, { order }, void 0, false, {
+      /* @__PURE__ */ jsxDEV(TicketPanel, { order, canEdit }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 104,
         columnNumber: 9
@@ -188,7 +189,7 @@ function RegisterView() {
     columnNumber: 5
   }, this);
 }
-function TicketPanel({ order }) {
+function TicketPanel({ order, canEdit }) {
   const { state, dispatch } = useStore();
   const items = order?.items || [];
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
@@ -216,6 +217,9 @@ function TicketPanel({ order }) {
     flushNoteDrafts();
     dispatch({ type: "SEND_TO_KITCHEN", orderId: order.id });
     setNoteDrafts({});
+  };
+  const handleNewOrder = () => {
+    dispatch({ type: "OPEN_ORDER", tableId: order.tableId });
   };
   if (!order) {
     return /* @__PURE__ */ jsxDEV("aside", { className: "ticket empty", children: [
@@ -274,6 +278,40 @@ function TicketPanel({ order }) {
       lineNumber: 129,
       columnNumber: 7
     }, this),
+    !canEdit && /* @__PURE__ */ jsxDEV("div", { className: "ticket-locked", children: [
+      /* @__PURE__ */ jsxDEV("p", { children: "Ya fue enviado a cocina y no se puede modificar." }, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 129,
+        columnNumber: 7
+      }, this),
+      /* @__PURE__ */ jsxDEV(
+        "button",
+        {
+          className: "btn ghost",
+          onClick: handleNewOrder,
+          children: [
+            /* @__PURE__ */ jsxDEV(Plus, { size: 16 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 129,
+              columnNumber: 7
+            }, this),
+            " Nuevo pedido para esta mesa"
+          ]
+        },
+        void 0,
+        true,
+        {
+          fileName: "<stdin>",
+          lineNumber: 129,
+          columnNumber: 7
+        },
+        this
+      )
+    ] }, void 0, true, {
+      fileName: "<stdin>",
+      lineNumber: 129,
+      columnNumber: 7
+    }, this),
     /* @__PURE__ */ jsxDEV("div", { className: "ticket-items", children: [
       items.length === 0 && /* @__PURE__ */ jsxDEV("p", { className: "empty", children: "Cart is empty \u2014 add items." }, void 0, false, {
         fileName: "<stdin>",
@@ -306,7 +344,7 @@ function TicketPanel({ order }) {
         }, this),
         /* @__PURE__ */ jsxDEV("div", { className: "ti-controls", children: [
           /* @__PURE__ */ jsxDEV("div", { className: "qty", children: [
-            /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1, children: /* @__PURE__ */ jsxDEV(Minus, { size: 14 }, void 0, false, {
+            /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1 || !canEdit, children: /* @__PURE__ */ jsxDEV(Minus, { size: 14 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 150,
               columnNumber: 19
@@ -320,7 +358,7 @@ function TicketPanel({ order }) {
               lineNumber: 152,
               columnNumber: 17
             }, this),
-            /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), children: /* @__PURE__ */ jsxDEV(Plus, { size: 14 }, void 0, false, {
+            /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), disabled: !canEdit, children: /* @__PURE__ */ jsxDEV(Plus, { size: 14 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 154,
               columnNumber: 19
@@ -340,6 +378,7 @@ function TicketPanel({ order }) {
               className: "note",
               placeholder: "Add note\u2026",
               value: noteValue(idx),
+              disabled: !canEdit,
               onChange: (e) => handleNoteChange(idx, e.target.value)
             },
             void 0,
@@ -351,7 +390,7 @@ function TicketPanel({ order }) {
             },
             this
           ),
-          /* @__PURE__ */ jsxDEV("button", { className: "remove", onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {
+          /* @__PURE__ */ jsxDEV("button", { className: "remove", disabled: !canEdit, onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 164,
             columnNumber: 17
