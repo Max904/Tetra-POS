@@ -451,7 +451,7 @@ function FloorPlanView({ setView }) {
 }
 
 // js/views/register.jsx
-import { useMemo as useMemo2, useState as useState2 } from "react";
+import { useEffect as useEffect2b, useMemo as useMemo2, useState as useState2 } from "react";
 import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt } from "lucide-react";
 
 // js/data.js
@@ -678,6 +678,28 @@ function TicketPanel({ order }) {
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
   const canSend = items.length > 0 && order && order.status === "new";
+  const [noteDrafts, setNoteDrafts] = useState2({});
+  useEffect2b(() => {
+    setNoteDrafts({});
+  }, [order?.id]);
+  const noteValue = (idx) => noteDrafts[idx] !== void 0 ? noteDrafts[idx] : items[idx]?.note || "";
+  const handleNoteChange = (idx, value) => {
+    setNoteDrafts((d) => ({ ...d, [idx]: value }));
+  };
+  const flushNoteDrafts = () => {
+    Object.entries(noteDrafts).forEach(([idxStr, note]) => {
+      const idx = Number(idxStr);
+      const item = items[idx];
+      if (item && note !== item.note) {
+        dispatch({ type: "SET_NOTE", orderId: order.id, index: idx, note });
+      }
+    });
+  };
+  const handleSendToKitchen = () => {
+    flushNoteDrafts();
+    dispatch({ type: "SEND_TO_KITCHEN", orderId: order.id });
+    setNoteDrafts({});
+  };
   if (!order) {
     return /* @__PURE__ */ jsxDEV("aside", { className: "ticket empty", children: [
       /* @__PURE__ */ jsxDEV(Receipt, { size: 28 }, void 0, false, {
@@ -800,8 +822,8 @@ function TicketPanel({ order }) {
             {
               className: "note",
               placeholder: "Add note\u2026",
-              value: it.note,
-              onChange: (e) => dispatch({ type: "SET_NOTE", orderId: order.id, index: idx, note: e.target.value })
+              value: noteValue(idx),
+              onChange: (e) => handleNoteChange(idx, e.target.value)
             },
             void 0,
             false,
@@ -909,7 +931,7 @@ function TicketPanel({ order }) {
         {
           className: "btn kitchen",
           disabled: !canSend,
-          onClick: () => dispatch({ type: "SEND_TO_KITCHEN", orderId: order.id }),
+          onClick: handleSendToKitchen,
           children: [
             /* @__PURE__ */ jsxDEV(ChefHat, { size: 17 }, void 0, false, {
               fileName: "<stdin>",
@@ -1002,7 +1024,7 @@ function cap2(s) {
 
 // js/views/kds.jsx
 import { useEffect as useEffect2, useState as useState3 } from "react";
-import { ChefHat as ChefHat2, CookingPot, Check, X, Timer } from "lucide-react";
+import { ChefHat as ChefHat2, CookingPot, Check, X, Timer, StickyNote } from "lucide-react";
 function useNow() {
   const [now, setNow] = useState3(() => Date.now());
   useEffect2(() => {
@@ -1119,8 +1141,19 @@ function KdsView() {
             columnNumber: 23
           }, this),
           /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
-            it.name,
-            it.note && /* @__PURE__ */ jsxDEV("em", { className: "k-note", children: it.note }, void 0, false, {
+            /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 66,
+              columnNumber: 23
+            }, this),
+            it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
+              /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {
+                fileName: "<stdin>",
+                lineNumber: 68,
+                columnNumber: 39
+              }, this),
+              it.note
+            ] }, void 0, true, {
               fileName: "<stdin>",
               lineNumber: 68,
               columnNumber: 37
