@@ -71,8 +71,10 @@ function KdsView() {
       lineNumber: 40,
       columnNumber: 9
     }, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
-      const elapsed = now - o.createdAt;
-      const red = elapsed > 15 * 60 * 1e3;
+      const startedAt = o.sentAt || o.createdAt;
+      const endedAt = o.servedAt || now;
+      const elapsed = endedAt - startedAt;
+      const red = o.status !== "served" && elapsed > 15 * 60 * 1e3;
       return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
         /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
           /* @__PURE__ */ jsxDEV("div", { children: [
