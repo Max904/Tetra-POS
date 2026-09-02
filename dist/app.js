@@ -59,16 +59,18 @@ async function fetchAll() {
     { data: tableRows, error: e3 },
     { data: orderRows, error: e4 },
     { data: orderItemRows, error: e5 },
-    { data: appStateRows, error: e6 }
+    { data: appStateRows, error: e6 },
+    { data: categoryRows, error: e7 }
   ] = await Promise.all([
     supabase.from("staff").select("*").order("name"),
     supabase.from("menu_items").select("*"),
     supabase.from("tables").select("*"),
     supabase.from("orders").select("*").order("created_at"),
     supabase.from("order_items").select("*").order("id"),
-    supabase.from("app_state").select("*").eq("id", 1)
+    supabase.from("app_state").select("*").eq("id", 1),
+    supabase.from("categories").select("*").order("sort_order")
   ]);
-  const err = e1 || e2 || e3 || e4 || e5 || e6;
+  const err = e1 || e2 || e3 || e4 || e5 || e6 || e7;
   if (err) {
     console.error("Supabase fetch error:", err);
     throw err;
@@ -99,7 +101,7 @@ async function fetchAll() {
   const staffNames = (staffRows || []).map((s) => s.name);
   return {
     staff: staffNames,
-    categories: [...new Set((menuRows || []).map((m) => m.category))],
+    categories: (categoryRows || []).map((c) => c.name),
     menu: (menuRows || []).map((m) => ({ ...m, price: Number(m.price) })),
     tables: tableRows || [],
     orders,
@@ -124,6 +126,21 @@ async function runAction(action, state) {
       }
       return;
     }
+    case "ADD_CATEGORY":
+      await supabase.from("categories").insert({
+        id: `c${Date.now()}`,
+        name: action.name,
+        sort_order: state.categories.length
+      });
+      return;
+    case "RENAME_CATEGORY": {
+      await supabase.from("categories").update({ name: action.newName }).eq("name", action.oldName);
+      await supabase.from("menu_items").update({ category: action.newName }).eq("category", action.oldName);
+      return;
+    }
+    case "DELETE_CATEGORY":
+      await supabase.from("categories").delete().eq("name", action.name);
+      return;
     case "ADD_ITEM":
       await supabase.from("menu_items").insert({
         id: `m${Date.now()}`,
@@ -282,7 +299,7 @@ function StoreProvider({ children }) {
   }, [refreshNow]);
   useEffect(() => {
     refreshNow();
-    const channel = supabase.channel("tetra-sync").on("postgres_changes", { event: "*", schema: "public", table: "staff" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "tables" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "app_state" }, scheduleRefresh).subscribe();
+    const channel = supabase.channel("tetra-sync").on("postgres_changes", { event: "*", schema: "public", table: "staff" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "tables" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "app_state" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "categories" }, scheduleRefresh).subscribe();
     return () => {
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
       supabase.removeChannel(channel);
@@ -1087,6 +1104,16 @@ function fmt(ms) {
   if (h > 0) return `${h}:${String(m % 60).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
   return `${m}:${String(r).padStart(2, "0")}`;
 }
+function groupByCategory(items, menu, categories) {
+  const catOf = (menuId) => menu.find((m) => m.id === menuId)?.category || "Other";
+  const groups = {};
+  for (const it of items) {
+    const cat = catOf(it.menuId);
+    (groups[cat] ||= []).push(it);
+  }
+  const order = [...categories, "Other"];
+  return order.filter((c) => groups[c]).map((cat) => ({ cat, items: groups[cat] }));
+}
 function KdsView() {
   const { state, dispatch } = useStore();
   const orders = useKitchenOrders(state);
@@ -1179,43 +1206,22 @@ function KdsView() {
           lineNumber: 51,
           columnNumber: 17
         }, this),
-        /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: o.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", { children: [
-          /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
-            it.qty,
-            "\xD7"
-          ] }, void 0, true, {
-            fileName: "<stdin>",
-            lineNumber: 65,
-            columnNumber: 23
-          }, this),
-          /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
-            /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {
-              fileName: "<stdin>",
-              lineNumber: 66,
-              columnNumber: 23
-            }, this),
-            it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
-              /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {
-                fileName: "<stdin>",
-                lineNumber: 68,
-                columnNumber: 39
-              }, this),
-              it.note
-            ] }, void 0, true, {
-              fileName: "<stdin>",
-              lineNumber: 68,
-              columnNumber: 37
-            }, this)
-          ] }, void 0, true, {
-            fileName: "<stdin>",
-            lineNumber: 66,
-            columnNumber: 23
-          }, this)
-        ] }, i, true, {
-          fileName: "<stdin>",
-          lineNumber: 64,
-          columnNumber: 21
-        }, this)) }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("div", { className: "k-groups", children: groupByCategory(o.items, state.menu, state.categories).map((group) => /* @__PURE__ */ jsxDEV("div", { className: "k-cat-group", children: [
+          /* @__PURE__ */ jsxDEV("span", { className: "k-cat-label", children: group.cat }, void 0, false, {}, this),
+          /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", { children: [
+            /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
+              it.qty,
+              "\xD7"
+            ] }, void 0, true, {}, this),
+            /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
+              /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
+              it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
+                /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {}, this),
+                it.note
+              ] }, void 0, true, {}, this)
+            ] }, void 0, true, {}, this)
+          ] }, i, true, {}, this)) }, void 0, false, {}, this)
+        ] }, group.cat, true, {}, this)) }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 62,
           columnNumber: 17
@@ -1293,7 +1299,7 @@ function KdsView() {
 
 // js/views/settings.jsx
 import { useState as useState4 } from "react";
-import { Plus as Plus2, Trash2 as Trash22, User, Square } from "lucide-react";
+import { Plus as Plus2, Trash2 as Trash22, User, Square, Tag } from "lucide-react";
 function SettingsView() {
   return /* @__PURE__ */ jsxDEV("div", { className: "settings", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
@@ -1317,6 +1323,7 @@ function SettingsView() {
       columnNumber: 7
     }, this),
     /* @__PURE__ */ jsxDEV("div", { className: "setting-tabs-grid", children: [
+      /* @__PURE__ */ jsxDEV(CategoryManager, {}, void 0, false, {}, this),
       /* @__PURE__ */ jsxDEV(MenuManager, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 15,
@@ -1347,6 +1354,84 @@ function SettingsView() {
     lineNumber: 7,
     columnNumber: 5
   }, this);
+}
+function CategoryManager() {
+  const { state, dispatch } = useStore();
+  const [name, setName] = useState4("");
+  const [editing, setEditing] = useState4(null);
+  const [editValue, setEditValue] = useState4("");
+  const countFor = (c) => state.menu.filter((m) => m.category === c).length;
+  const add = () => {
+    const n = name.trim();
+    if (!n) return;
+    if (state.categories.some((c) => c.toLowerCase() === n.toLowerCase())) {
+      alert("That category already exists.");
+      return;
+    }
+    dispatch({ type: "ADD_CATEGORY", name: n });
+    setName("");
+  };
+  const startEdit = (c) => {
+    setEditing(c);
+    setEditValue(c);
+  };
+  const cancelEdit = () => {
+    setEditing(null);
+    setEditValue("");
+  };
+  const saveEdit = () => {
+    const n = editValue.trim();
+    if (!n || n === editing) {
+      cancelEdit();
+      return;
+    }
+    if (state.categories.some((c) => c.toLowerCase() === n.toLowerCase() && c !== editing)) {
+      alert("That category already exists.");
+      return;
+    }
+    dispatch({ type: "RENAME_CATEGORY", oldName: editing, newName: n });
+    cancelEdit();
+  };
+  const remove = (c) => {
+    const inUse = countFor(c);
+    if (inUse > 0) {
+      alert(`Can't delete "${c}" \u2014 ${inUse} menu item${inUse === 1 ? "" : "s"} still use it. Reassign or delete them first.`);
+      return;
+    }
+    if (confirm(`Delete category "${c}"?`)) {
+      dispatch({ type: "DELETE_CATEGORY", name: c });
+    }
+  };
+  return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV("h2", { children: "Categories" }, void 0, false, {}, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "form", children: /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
+      /* @__PURE__ */ jsxDEV("input", { placeholder: "New category name", value: name, onChange: (e) => setName(e.target.value), onKeyDown: (e) => e.key === "Enter" && add() }, void 0, false, {}, this),
+      /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: add, children: [
+        /* @__PURE__ */ jsxDEV(Plus2, { size: 16 }, void 0, false, {}, this),
+        " Add category"
+      ] }, void 0, true, {}, this)
+    ] }, void 0, true, {}, this) }, void 0, false, {}, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: [
+      state.categories.map((c) => editing === c ? /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
+        /* @__PURE__ */ jsxDEV("input", { className: "pl-name", value: editValue, autoFocus: true, onChange: (e) => setEditValue(e.target.value), onKeyDown: (e) => e.key === "Enter" && saveEdit() }, void 0, false, {}, this),
+        /* @__PURE__ */ jsxDEV("button", { className: "pl-edit", onClick: saveEdit, children: "Save" }, void 0, false, {}, this),
+        /* @__PURE__ */ jsxDEV("button", { className: "pl-edit", onClick: cancelEdit, children: "Cancel" }, void 0, false, {}, this)
+      ] }, c, true, {}, this) : /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
+        /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: [
+          /* @__PURE__ */ jsxDEV(Tag, { size: 14 }, void 0, false, {}, this),
+          " ",
+          /* @__PURE__ */ jsxDEV("span", { className: "pl-name", children: c }, void 0, false, {}, this)
+        ] }, void 0, true, {}, this),
+        /* @__PURE__ */ jsxDEV("span", { className: "pl-stock ok", children: [
+          countFor(c),
+          " items"
+        ] }, void 0, true, {}, this),
+        /* @__PURE__ */ jsxDEV("button", { className: "pl-edit", onClick: () => startEdit(c), children: "Rename" }, void 0, false, {}, this),
+        /* @__PURE__ */ jsxDEV("button", { className: "pl-del", onClick: () => remove(c), children: /* @__PURE__ */ jsxDEV(Trash22, { size: 15 }, void 0, false, {}, this) }, void 0, false, {}, this)
+      ] }, c, true, {}, this)),
+      state.categories.length === 0 && /* @__PURE__ */ jsxDEV("p", { className: "empty", children: "No categories yet." }, void 0, false, {}, this)
+    ] }, void 0, true, {}, this)
+  ] }, void 0, true, {}, this);
 }
 function MenuManager() {
   const { state, dispatch } = useStore();
