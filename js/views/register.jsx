@@ -1,5 +1,5 @@
 import { Fragment, jsxDEV } from "react/jsx-dev-runtime";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt } from "lucide-react";
 import { useStore } from "./../store.js";
 import { TAX_RATE } from "./../data.js";
@@ -195,6 +195,28 @@ function TicketPanel({ order }) {
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
   const canSend = items.length > 0 && order && order.status === "new";
+  const [noteDrafts, setNoteDrafts] = useState({});
+  useEffect(() => {
+    setNoteDrafts({});
+  }, [order?.id]);
+  const noteValue = (idx) => noteDrafts[idx] !== void 0 ? noteDrafts[idx] : items[idx]?.note || "";
+  const handleNoteChange = (idx, value) => {
+    setNoteDrafts((d) => ({ ...d, [idx]: value }));
+  };
+  const flushNoteDrafts = () => {
+    Object.entries(noteDrafts).forEach(([idxStr, note]) => {
+      const idx = Number(idxStr);
+      const item = items[idx];
+      if (item && note !== item.note) {
+        dispatch({ type: "SET_NOTE", orderId: order.id, index: idx, note });
+      }
+    });
+  };
+  const handleSendToKitchen = () => {
+    flushNoteDrafts();
+    dispatch({ type: "SEND_TO_KITCHEN", orderId: order.id });
+    setNoteDrafts({});
+  };
   if (!order) {
     return /* @__PURE__ */ jsxDEV("aside", { className: "ticket empty", children: [
       /* @__PURE__ */ jsxDEV(Receipt, { size: 28 }, void 0, false, {
@@ -317,8 +339,8 @@ function TicketPanel({ order }) {
             {
               className: "note",
               placeholder: "Add note\u2026",
-              value: it.note,
-              onChange: (e) => dispatch({ type: "SET_NOTE", orderId: order.id, index: idx, note: e.target.value })
+              value: noteValue(idx),
+              onChange: (e) => handleNoteChange(idx, e.target.value)
             },
             void 0,
             false,
@@ -426,7 +448,7 @@ function TicketPanel({ order }) {
         {
           className: "btn kitchen",
           disabled: !canSend,
-          onClick: () => dispatch({ type: "SEND_TO_KITCHEN", orderId: order.id }),
+          onClick: handleSendToKitchen,
           children: [
             /* @__PURE__ */ jsxDEV(ChefHat, { size: 17 }, void 0, false, {
               fileName: "<stdin>",
