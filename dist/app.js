@@ -89,6 +89,8 @@ async function fetchAll() {
     staff: o.staff,
     items: itemsByOrder[o.id] || [],
     createdAt: new Date(o.created_at).getTime(),
+    sentAt: o.sent_at ? new Date(o.sent_at).getTime() : null,
+    servedAt: o.served_at ? new Date(o.served_at).getTime() : null,
     status: o.status,
     billRequested: o.bill_requested,
     paid: o.paid
@@ -219,13 +221,18 @@ async function runAction(action, state) {
     case "SEND_TO_KITCHEN": {
       const order = state.orders.find((o) => o.id === action.orderId);
       if (order && order.items.length) {
-        await supabase.from("orders").update({ status: "sent" }).eq("id", action.orderId);
+        await supabase.from("orders").update({ status: "sent", sent_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", action.orderId);
       }
       return;
     }
-    case "SET_KITCHEN":
-      await supabase.from("orders").update({ status: action.status }).eq("id", action.orderId);
+    case "SET_KITCHEN": {
+      const patch = { status: action.status };
+      if (action.status === "served") {
+        patch.served_at = (/* @__PURE__ */ new Date()).toISOString();
+      }
+      await supabase.from("orders").update(patch).eq("id", action.orderId);
       return;
+    }
     case "REQUEST_BILL":
       await supabase.from("orders").update({ bill_requested: true }).eq("id", action.orderId);
       return;
@@ -1094,8 +1101,10 @@ function KdsView() {
       lineNumber: 40,
       columnNumber: 9
     }, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
-      const elapsed = now - o.createdAt;
-      const red = elapsed > 15 * 60 * 1e3;
+      const startedAt = o.sentAt || o.createdAt;
+      const endedAt = o.servedAt || now;
+      const elapsed = endedAt - startedAt;
+      const red = o.status !== "served" && elapsed > 15 * 60 * 1e3;
       return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
         /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
           /* @__PURE__ */ jsxDEV("div", { children: [
