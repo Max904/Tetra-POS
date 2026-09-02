@@ -1,6 +1,6 @@
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { useEffect, useState } from "react";
-import { ChefHat, CookingPot, Check, X, Timer } from "lucide-react";
+import { ChefHat, CookingPot, Check, X, Timer, StickyNote } from "lucide-react";
 import { useStore, useKitchenOrders } from "./../store.js";
 function useNow() {
   const [now, setNow] = useState(() => Date.now());
@@ -118,8 +118,19 @@ function KdsView() {
             columnNumber: 23
           }, this),
           /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
-            it.name,
-            it.note && /* @__PURE__ */ jsxDEV("em", { className: "k-note", children: it.note }, void 0, false, {
+            /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 66,
+              columnNumber: 23
+            }, this),
+            it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
+              /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {
+                fileName: "<stdin>",
+                lineNumber: 68,
+                columnNumber: 39
+              }, this),
+              it.note
+            ] }, void 0, true, {
               fileName: "<stdin>",
               lineNumber: 68,
               columnNumber: 37
