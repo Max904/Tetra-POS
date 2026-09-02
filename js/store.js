@@ -31,6 +31,7 @@ async function fetchAll() {
     { data: orderRows, error: e4 },
     { data: orderItemRows, error: e5 },
     { data: appStateRows, error: e6 },
+    { data: categoryRows, error: e7 },
   ] = await Promise.all([
     supabase.from("staff").select("*").order("name"),
     supabase.from("menu_items").select("*"),
@@ -38,9 +39,10 @@ async function fetchAll() {
     supabase.from("orders").select("*").order("created_at"),
     supabase.from("order_items").select("*"),
     supabase.from("app_state").select("*").eq("id", 1),
+    supabase.from("categories").select("*").order("sort_order"),
   ]);
 
-  const err = e1 || e2 || e3 || e4 || e5 || e6;
+  const err = e1 || e2 || e3 || e4 || e5 || e6 || e7;
   if (err) {
     console.error("Supabase fetch error:", err);
     throw err;
@@ -75,7 +77,7 @@ async function fetchAll() {
 
   return {
     staff: staffNames,
-    categories: [...new Set((menuRows || []).map((m) => m.category))],
+    categories: (categoryRows || []).map((c) => c.name),
     menu: (menuRows || []).map((m) => ({ ...m, price: Number(m.price) })),
     tables: tableRows || [],
     orders,
@@ -107,6 +109,24 @@ async function runAction(action, state) {
       }
       return;
     }
+
+    case "ADD_CATEGORY":
+      await supabase.from("categories").insert({
+        id: `c${Date.now()}`,
+        name: action.name,
+        sort_order: state.categories.length,
+      });
+      return;
+
+    case "RENAME_CATEGORY": {
+      await supabase.from("categories").update({ name: action.newName }).eq("name", action.oldName);
+      await supabase.from("menu_items").update({ category: action.newName }).eq("category", action.oldName);
+      return;
+    }
+
+    case "DELETE_CATEGORY":
+      await supabase.from("categories").delete().eq("name", action.name);
+      return;
 
     case "ADD_ITEM":
       await supabase.from("menu_items").insert({
@@ -311,6 +331,7 @@ export function StoreProvider({ children }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "app_state" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, scheduleRefresh)
       .subscribe();
 
     return () => {
