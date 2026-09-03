@@ -5,13 +5,13 @@ function jsxDEV(type, props, key) {
 }
 
 // js/app.jsx
-import { useEffect as useEffect3, useState as useState5 } from "react";
+import { useEffect as useEffect5, useState as useState6 } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ShoppingCart,
   Printer as Printer2,
-  ChefHat as ChefHat3,
-  Beer as Beer2,
+  ChefHat as ChefHat4,
+  Beer as Beer3,
   Sun,
   Moon,
   Clock,
@@ -42,7 +42,6 @@ var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // js/store.js
-import { jsx as jsx2 } from "react/jsx-runtime";
 var LOW_STOCK = 5;
 var EMPTY_STATE = {
   staff: [],
@@ -67,7 +66,7 @@ async function fetchAll() {
     supabase.from("menu_items").select("*"),
     supabase.from("tables").select("*"),
     supabase.from("orders").select("*").order("created_at"),
-    supabase.from("order_items").select("*").order("id"),
+    supabase.from("order_items").select("*"),
     supabase.from("app_state").select("*").eq("id", 1),
     supabase.from("categories").select("*").order("sort_order")
   ]);
@@ -148,11 +147,18 @@ async function runAction(action, state) {
         name: action.name,
         category: action.category,
         price: action.price,
-        stock: action.stock
+        stock: action.stock,
+        station: action.station || "kitchen"
       });
       return;
     case "UPDATE_ITEM":
-      await supabase.from("menu_items").update({ name: action.name, category: action.category, price: action.price, stock: action.stock }).eq("id", action.id);
+      await supabase.from("menu_items").update({
+        name: action.name,
+        category: action.category,
+        price: action.price,
+        stock: action.stock,
+        station: action.station || "kitchen"
+      }).eq("id", action.id);
       return;
     case "DELETE_ITEM":
       await supabase.from("menu_items").delete().eq("id", action.id);
@@ -215,17 +221,10 @@ async function runAction(action, state) {
       const order = state.orders.find((o) => o.id === action.orderId);
       const item = order?.items[action.index];
       if (!item) return;
-      const delta = item.qty - action.qty;
       if (action.qty <= 0) {
         await supabase.from("order_items").delete().eq("order_id", action.orderId).eq("menu_id", item.menuId);
       } else {
         await supabase.from("order_items").update({ qty: action.qty }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
-      }
-      if (delta !== 0) {
-        const menuItem = state.menu.find((m) => m.id === item.menuId);
-        if (menuItem) {
-          await supabase.from("menu_items").update({ stock: Math.max(0, menuItem.stock + delta) }).eq("id", item.menuId);
-        }
       }
       return;
     }
@@ -262,15 +261,6 @@ async function runAction(action, state) {
       return;
     }
     case "DISMISS_ORDER": {
-      const order = state.orders.find((o) => o.id === action.orderId);
-      if (order) {
-        for (const it of order.items) {
-          const menuItem = state.menu.find((m) => m.id === it.menuId);
-          if (menuItem) {
-            await supabase.from("menu_items").update({ stock: menuItem.stock + it.qty }).eq("id", it.menuId);
-          }
-        }
-      }
       await supabase.from("orders").delete().eq("id", action.orderId);
       if (state.activeOrderId === action.orderId) {
         await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
@@ -312,7 +302,7 @@ function StoreProvider({ children }) {
     });
   }, []);
   const api = useMemo(() => ({ state, dispatch }), [state]);
-  return /* @__PURE__ */ jsx2(StoreContext.Provider, { value: api, children });
+  return /* @__PURE__ */ React.createElement(StoreContext.Provider, { value: api }, children);
 }
 function useStore() {
   return useContext(StoreContext);
@@ -327,13 +317,19 @@ function useOrdersByTable(state) {
   }
   return activeByTable;
 }
+function stationOf(state, menuId) {
+  return state.menu.find((m) => m.id === menuId)?.station || "kitchen";
+}
 function useKitchenOrders(state) {
-  return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid");
+  return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid").map((o) => ({
+    ...o,
+    items: o.items.filter((it) => stationOf(state, it.menuId) === "kitchen")
+  })).filter((o) => o.items.length > 0);
 }
 function useBarOrders(state) {
   return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid").map((o) => ({
     ...o,
-    items: o.items.filter((it) => state.menu.find((m) => m.id === it.menuId)?.category === "Drinks")
+    items: o.items.filter((it) => stationOf(state, it.menuId) === "bar")
   })).filter((o) => o.items.length > 0);
 }
 
@@ -482,7 +478,7 @@ function FloorPlanView({ setView }) {
 }
 
 // js/views/register.jsx
-import { useEffect as useEffect2b, useMemo as useMemo2, useState as useState2 } from "react";
+import { useEffect as useEffect2, useMemo as useMemo2, useState as useState2 } from "react";
 import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt } from "lucide-react";
 
 // js/data.js
@@ -711,7 +707,7 @@ function TicketPanel({ order, canEdit }) {
   const total = subtotal + tax;
   const canSend = items.length > 0 && order && order.status === "new";
   const [noteDrafts, setNoteDrafts] = useState2({});
-  useEffect2b(() => {
+  useEffect2(() => {
     setNoteDrafts({});
   }, [order?.id]);
   const noteValue = (idx) => noteDrafts[idx] !== void 0 ? noteDrafts[idx] : items[idx]?.note || "";
@@ -1093,11 +1089,11 @@ function cap2(s) {
 }
 
 // js/views/kds.jsx
-import { useEffect as useEffect2, useState as useState3 } from "react";
-import { ChefHat as ChefHat2, Beer, CookingPot, Check, X, Timer, StickyNote } from "lucide-react";
+import { useEffect as useEffect3, useState as useState3 } from "react";
+import { ChefHat as ChefHat2, CookingPot, Check, X, Timer, StickyNote } from "lucide-react";
 function useNow() {
   const [now, setNow] = useState3(() => Date.now());
-  useEffect2(() => {
+  useEffect3(() => {
     const id = setInterval(() => setNow(Date.now()), 1e3);
     return () => clearInterval(id);
   }, []);
@@ -1110,16 +1106,6 @@ function fmt(ms) {
   const h = Math.floor(m / 60);
   if (h > 0) return `${h}:${String(m % 60).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
   return `${m}:${String(r).padStart(2, "0")}`;
-}
-function groupByCategory(items, menu, categories) {
-  const catOf = (menuId) => menu.find((m) => m.id === menuId)?.category || "Other";
-  const groups = {};
-  for (const it of items) {
-    const cat = catOf(it.menuId);
-    (groups[cat] ||= []).push(it);
-  }
-  const order = [...categories, "Other"];
-  return order.filter((c) => groups[c]).map((cat) => ({ cat, items: groups[cat] }));
 }
 function KdsView() {
   const { state, dispatch } = useStore();
@@ -1213,22 +1199,43 @@ function KdsView() {
           lineNumber: 51,
           columnNumber: 17
         }, this),
-        /* @__PURE__ */ jsxDEV("div", { className: "k-groups", children: groupByCategory(o.items, state.menu, state.categories).map((group) => /* @__PURE__ */ jsxDEV("div", { className: "k-cat-group", children: [
-          /* @__PURE__ */ jsxDEV("span", { className: "k-cat-label", children: group.cat }, void 0, false, {}, this),
-          /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", { children: [
-            /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
-              it.qty,
-              "\xD7"
-            ] }, void 0, true, {}, this),
-            /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
-              /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
-              it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
-                /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {}, this),
-                it.note
-              ] }, void 0, true, {}, this)
-            ] }, void 0, true, {}, this)
-          ] }, i, true, {}, this)) }, void 0, false, {}, this)
-        ] }, group.cat, true, {}, this)) }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: o.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", { children: [
+          /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
+            it.qty,
+            "\xD7"
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 65,
+            columnNumber: 23
+          }, this),
+          /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
+            /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 66,
+              columnNumber: 23
+            }, this),
+            it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
+              /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {
+                fileName: "<stdin>",
+                lineNumber: 68,
+                columnNumber: 39
+              }, this),
+              it.note
+            ] }, void 0, true, {
+              fileName: "<stdin>",
+              lineNumber: 68,
+              columnNumber: 37
+            }, this)
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 66,
+            columnNumber: 23
+          }, this)
+        ] }, i, true, {
+          fileName: "<stdin>",
+          lineNumber: 64,
+          columnNumber: 21
+        }, this)) }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 62,
           columnNumber: 17
@@ -1305,10 +1312,38 @@ function KdsView() {
 }
 
 // js/views/bar.jsx
+import { useEffect as useEffect4, useState as useState4 } from "react";
+import { Beer, CookingPot as CookingPot2, Check as Check2, X as X2, Timer as Timer2, StickyNote as StickyNote2 } from "lucide-react";
+function useNow2() {
+  const [now, setNow] = useState4(() => Date.now());
+  useEffect4(() => {
+    const id = setInterval(() => setNow(Date.now()), 1e3);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+function fmt2(ms) {
+  const s = Math.max(0, Math.floor(ms / 1e3));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}:${String(m % 60).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+function groupByCategory(items, menu, categories) {
+  const catOf = (menuId) => menu.find((m) => m.id === menuId)?.category || "Other";
+  const groups = {};
+  for (const it of items) {
+    const cat = catOf(it.menuId);
+    (groups[cat] ||= []).push(it);
+  }
+  const order = [...categories, "Other"];
+  return order.filter((c) => groups[c]).map((cat) => ({ cat, items: groups[cat] }));
+}
 function BarView() {
   const { state, dispatch } = useStore();
   const orders = useBarOrders(state);
-  const now = useNow();
+  const now = useNow2();
   const tableName = (id) => state.tables.find((t) => t.id === id)?.name || id;
   return /* @__PURE__ */ jsxDEV("div", { className: "kds", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: [
@@ -1337,8 +1372,8 @@ function BarView() {
             /* @__PURE__ */ jsxDEV("span", { className: "k-staff", children: o.staff }, void 0, false, {}, this)
           ] }, void 0, true, {}, this),
           /* @__PURE__ */ jsxDEV("div", { className: `k-timer ${red ? "hot" : ""}`, children: [
-            /* @__PURE__ */ jsxDEV(Timer, { size: 15 }, void 0, false, {}, this),
-            fmt(elapsed)
+            /* @__PURE__ */ jsxDEV(Timer2, { size: 15 }, void 0, false, {}, this),
+            fmt2(elapsed)
           ] }, void 0, true, {}, this)
         ] }, void 0, true, {}, this),
         /* @__PURE__ */ jsxDEV("div", { className: "k-groups", children: groupByCategory(o.items, state.menu, state.categories).map((group) => /* @__PURE__ */ jsxDEV("div", { className: "k-cat-group", children: [
@@ -1351,7 +1386,7 @@ function BarView() {
             /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
               /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
               it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
-                /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {}, this),
+                /* @__PURE__ */ jsxDEV(StickyNote2, { size: 12 }, void 0, false, {}, this),
                 it.note
               ] }, void 0, true, {}, this)
             ] }, void 0, true, {}, this)
@@ -1359,19 +1394,19 @@ function BarView() {
         ] }, group.cat, true, {}, this)) }, void 0, false, {}, this),
         /* @__PURE__ */ jsxDEV("footer", { className: "k-actions", children: [
           o.status === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "preparing" }), children: [
-            /* @__PURE__ */ jsxDEV(CookingPot, { size: 16 }, void 0, false, {}, this),
+            /* @__PURE__ */ jsxDEV(CookingPot2, { size: 16 }, void 0, false, {}, this),
             " Preparing"
           ] }, void 0, true, {}, this),
           o.status === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "ready" }), children: [
-            /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {}, this),
+            /* @__PURE__ */ jsxDEV(Check2, { size: 16 }, void 0, false, {}, this),
             " Mark Ready"
           ] }, void 0, true, {}, this),
           o.status === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "served" }), children: [
-            /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {}, this),
+            /* @__PURE__ */ jsxDEV(Check2, { size: 16 }, void 0, false, {}, this),
             " Served"
           ] }, void 0, true, {}, this),
           /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id }), children: [
-            /* @__PURE__ */ jsxDEV(X, { size: 16 }, void 0, false, {}, this),
+            /* @__PURE__ */ jsxDEV(X2, { size: 16 }, void 0, false, {}, this),
             " Dismiss"
           ] }, void 0, true, {}, this)
         ] }, void 0, true, {}, this)
@@ -1381,8 +1416,8 @@ function BarView() {
 }
 
 // js/views/settings.jsx
-import { useState as useState4 } from "react";
-import { Plus as Plus2, Trash2 as Trash22, User, Square, Tag } from "lucide-react";
+import { useState as useState5 } from "react";
+import { Plus as Plus2, Trash2 as Trash22, User, Square, ChefHat as ChefHat3, Beer as Beer2 } from "lucide-react";
 function SettingsView() {
   return /* @__PURE__ */ jsxDEV("div", { className: "settings", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
@@ -1406,7 +1441,6 @@ function SettingsView() {
       columnNumber: 7
     }, this),
     /* @__PURE__ */ jsxDEV("div", { className: "setting-tabs-grid", children: [
-      /* @__PURE__ */ jsxDEV(CategoryManager, {}, void 0, false, {}, this),
       /* @__PURE__ */ jsxDEV(MenuManager, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 15,
@@ -1438,104 +1472,28 @@ function SettingsView() {
     columnNumber: 5
   }, this);
 }
-function CategoryManager() {
-  const { state, dispatch } = useStore();
-  const [name, setName] = useState4("");
-  const [editing, setEditing] = useState4(null);
-  const [editValue, setEditValue] = useState4("");
-  const countFor = (c) => state.menu.filter((m) => m.category === c).length;
-  const add = () => {
-    const n = name.trim();
-    if (!n) return;
-    if (state.categories.some((c) => c.toLowerCase() === n.toLowerCase())) {
-      alert("That category already exists.");
-      return;
-    }
-    dispatch({ type: "ADD_CATEGORY", name: n });
-    setName("");
-  };
-  const startEdit = (c) => {
-    setEditing(c);
-    setEditValue(c);
-  };
-  const cancelEdit = () => {
-    setEditing(null);
-    setEditValue("");
-  };
-  const saveEdit = () => {
-    const n = editValue.trim();
-    if (!n || n === editing) {
-      cancelEdit();
-      return;
-    }
-    if (state.categories.some((c) => c.toLowerCase() === n.toLowerCase() && c !== editing)) {
-      alert("That category already exists.");
-      return;
-    }
-    dispatch({ type: "RENAME_CATEGORY", oldName: editing, newName: n });
-    cancelEdit();
-  };
-  const remove = (c) => {
-    const inUse = countFor(c);
-    if (inUse > 0) {
-      alert(`Can't delete "${c}" \u2014 ${inUse} menu item${inUse === 1 ? "" : "s"} still use it. Reassign or delete them first.`);
-      return;
-    }
-    if (confirm(`Delete category "${c}"?`)) {
-      dispatch({ type: "DELETE_CATEGORY", name: c });
-    }
-  };
-  return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
-    /* @__PURE__ */ jsxDEV("h2", { children: "Categories" }, void 0, false, {}, this),
-    /* @__PURE__ */ jsxDEV("div", { className: "form", children: /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
-      /* @__PURE__ */ jsxDEV("input", { placeholder: "New category name", value: name, onChange: (e) => setName(e.target.value), onKeyDown: (e) => e.key === "Enter" && add() }, void 0, false, {}, this),
-      /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: add, children: [
-        /* @__PURE__ */ jsxDEV(Plus2, { size: 16 }, void 0, false, {}, this),
-        " Add category"
-      ] }, void 0, true, {}, this)
-    ] }, void 0, true, {}, this) }, void 0, false, {}, this),
-    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: [
-      state.categories.map((c) => editing === c ? /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
-        /* @__PURE__ */ jsxDEV("input", { className: "pl-name", value: editValue, autoFocus: true, onChange: (e) => setEditValue(e.target.value), onKeyDown: (e) => e.key === "Enter" && saveEdit() }, void 0, false, {}, this),
-        /* @__PURE__ */ jsxDEV("button", { className: "pl-edit", onClick: saveEdit, children: "Save" }, void 0, false, {}, this),
-        /* @__PURE__ */ jsxDEV("button", { className: "pl-edit", onClick: cancelEdit, children: "Cancel" }, void 0, false, {}, this)
-      ] }, c, true, {}, this) : /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
-        /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: [
-          /* @__PURE__ */ jsxDEV(Tag, { size: 14 }, void 0, false, {}, this),
-          " ",
-          /* @__PURE__ */ jsxDEV("span", { className: "pl-name", children: c }, void 0, false, {}, this)
-        ] }, void 0, true, {}, this),
-        /* @__PURE__ */ jsxDEV("span", { className: "pl-stock ok", children: [
-          countFor(c),
-          " items"
-        ] }, void 0, true, {}, this),
-        /* @__PURE__ */ jsxDEV("button", { className: "pl-edit", onClick: () => startEdit(c), children: "Rename" }, void 0, false, {}, this),
-        /* @__PURE__ */ jsxDEV("button", { className: "pl-del", onClick: () => remove(c), children: /* @__PURE__ */ jsxDEV(Trash22, { size: 15 }, void 0, false, {}, this) }, void 0, false, {}, this)
-      ] }, c, true, {}, this)),
-      state.categories.length === 0 && /* @__PURE__ */ jsxDEV("p", { className: "empty", children: "No categories yet." }, void 0, false, {}, this)
-    ] }, void 0, true, {}, this)
-  ] }, void 0, true, {}, this);
-}
 function MenuManager() {
   const { state, dispatch } = useStore();
-  const [name, setName] = useState4("");
-  const [category, setCategory] = useState4(state.categories[0]);
-  const [price, setPrice] = useState4("");
-  const [stock, setStock] = useState4("");
-  const [editing, setEditing] = useState4(null);
+  const [name, setName] = useState5("");
+  const [category, setCategory] = useState5(state.categories[0]);
+  const [price, setPrice] = useState5("");
+  const [stock, setStock] = useState5("");
+  const [station, setStation] = useState5("kitchen");
+  const [editing, setEditing] = useState5(null);
   const submit = () => {
     if (!name.trim()) return;
     const p = Math.max(0, parseFloat(price) || 0);
     const s = Math.max(0, parseInt(stock, 10) || 0);
     if (editing) {
-      dispatch({ type: "UPDATE_ITEM", id: editing, name: name.trim(), category, price: p, stock: s });
+      dispatch({ type: "UPDATE_ITEM", id: editing, name: name.trim(), category, price: p, stock: s, station });
     } else {
-      dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s });
+      dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s, station });
     }
     setEditing(null);
     setName("");
     setPrice("");
     setStock("");
+    setStation("kitchen");
   };
   const startEdit = (item) => {
     setEditing(item.id);
@@ -1543,6 +1501,7 @@ function MenuManager() {
     setCategory(item.category);
     setPrice(String(item.price));
     setStock(String(item.stock));
+    setStation(item.station || "kitchen");
   };
   return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
     /* @__PURE__ */ jsxDEV("h2", { children: "Menu" }, void 0, false, {
@@ -1582,6 +1541,47 @@ function MenuManager() {
         columnNumber: 9
       }, this),
       /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV("span", { className: "station-label", children: "Sends to:" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 68,
+          columnNumber: 9
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "station-toggle", role: "group", "aria-label": "Station", children: [
+          /* @__PURE__ */ jsxDEV("button", { type: "button", className: `station-btn ${station === "kitchen" ? "active" : ""}`, onClick: () => setStation("kitchen"), children: [
+            /* @__PURE__ */ jsxDEV(ChefHat3, { size: 15 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 68,
+              columnNumber: 11
+            }, this),
+            " Kitchen"
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 68,
+            columnNumber: 11
+          }, this),
+          /* @__PURE__ */ jsxDEV("button", { type: "button", className: `station-btn ${station === "bar" ? "active" : ""}`, onClick: () => setStation("bar"), children: [
+            /* @__PURE__ */ jsxDEV(Beer2, { size: 15 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 68,
+              columnNumber: 11
+            }, this),
+            " Bar"
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 68,
+            columnNumber: 11
+          }, this)
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 68,
+          columnNumber: 9
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 68,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
         /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: submit, children: [
           /* @__PURE__ */ jsxDEV(Plus2, { size: 16 }, void 0, false, {
             fileName: "<stdin>",
@@ -1600,6 +1600,7 @@ function MenuManager() {
           setName("");
           setPrice("");
           setStock("");
+          setStation("kitchen");
         }, children: "Cancel" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 73,
@@ -1623,6 +1624,22 @@ function MenuManager() {
           columnNumber: 15
         }, this),
         /* @__PURE__ */ jsxDEV("span", { className: "pl-cat", children: m.category }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 82,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV("span", { className: `pl-station ${(m.station || "kitchen") === "bar" ? "bar" : "kitchen"}`, children: [
+          (m.station || "kitchen") === "bar" ? /* @__PURE__ */ jsxDEV(Beer2, { size: 12 }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 82,
+            columnNumber: 15
+          }, this) : /* @__PURE__ */ jsxDEV(ChefHat3, { size: 12 }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 82,
+            columnNumber: 15
+          }, this),
+          (m.station || "kitchen") === "bar" ? "Bar" : "Kitchen"
+        ] }, void 0, true, {
           fileName: "<stdin>",
           lineNumber: 82,
           columnNumber: 15
@@ -1686,7 +1703,7 @@ function stockBadgeInfo(stock) {
 }
 function StaffManager() {
   const { state, dispatch } = useStore();
-  const [name, setName] = useState4("");
+  const [name, setName] = useState5("");
   const add = () => {
     const n = name.trim();
     if (n && !state.staff.includes(n)) {
@@ -1776,9 +1793,9 @@ function StaffManager() {
 }
 function FloorManager() {
   const { state, dispatch } = useStore();
-  const [name, setName] = useState4("");
-  const [zone, setZone] = useState4("Main");
-  const [caps, setCaps] = useState4("4");
+  const [name, setName] = useState5("");
+  const [zone, setZone] = useState5("Main");
+  const [caps, setCaps] = useState5("4");
   const add = () => {
     const n = name.trim();
     if (n) {
@@ -1952,13 +1969,13 @@ function InventoryPanel() {
 var VIEWS = [
   { key: "floorplan", name: "Tables", icon: LayoutDashboard },
   { key: "register", name: "Register", icon: ShoppingCart },
-  { key: "kds", name: "Kitchen", icon: ChefHat3 },
-  { key: "bar", name: "Bar", icon: Beer2 },
+  { key: "kds", name: "Kitchen", icon: ChefHat4 },
+  { key: "bar", name: "Bar", icon: Beer3 },
   { key: "settings", name: "Admin", icon: Printer2 }
 ];
 function useClock() {
-  const [now, setNow] = useState5(() => /* @__PURE__ */ new Date());
-  useEffect3(() => {
+  const [now, setNow] = useState6(() => /* @__PURE__ */ new Date());
+  useEffect5(() => {
     const id = setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
     return () => clearInterval(id);
   }, []);
@@ -2125,8 +2142,8 @@ function cap3(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function Shell() {
-  const [view, setView] = useState5("floorplan");
-  const [theme, setTheme] = useState5(
+  const [view, setView] = useState6("floorplan");
+  const [theme, setTheme] = useState6(
     () => document.documentElement.getAttribute("data-theme") || "dark"
   );
   return /* @__PURE__ */ jsxDEV("div", { className: "app", children: [
