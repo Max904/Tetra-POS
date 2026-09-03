@@ -85,18 +85,44 @@ async function fetchAll() {
       note: it.note || ""
     });
   }
-  const orders = (orderRows || []).map((o) => ({
-    id: o.id,
-    tableId: o.table_id,
-    staff: o.staff,
-    items: itemsByOrder[o.id] || [],
-    createdAt: new Date(o.created_at).getTime(),
-    sentAt: o.sent_at ? new Date(o.sent_at).getTime() : null,
-    servedAt: o.served_at ? new Date(o.served_at).getTime() : null,
-    status: o.status,
-    billRequested: o.bill_requested,
-    paid: o.paid
-  }));
+  const stationById = {};
+  for (const m of menuRows || []) {
+    stationById[m.id] = m.station || "kitchen";
+  }
+  const STAGE_RANK = { sent: 0, preparing: 1, ready: 2, served: 3 };
+  const orders = (orderRows || []).map((o) => {
+    const items = itemsByOrder[o.id] || [];
+    const kitchenApplies = items.some((it) => (stationById[it.menuId] || "kitchen") === "kitchen");
+    const barApplies = items.some((it) => (stationById[it.menuId] || "kitchen") === "bar");
+    const kitchenStatus = o.kitchen_status || "sent";
+    const barStatus = o.bar_status || "sent";
+    let status = o.status;
+    if (status !== "new" && status !== "paid") {
+      const active = [];
+      if (kitchenApplies) active.push(kitchenStatus);
+      if (barApplies) active.push(barStatus);
+      if (active.length) {
+        status = active.reduce((worst, s) => STAGE_RANK[s] < STAGE_RANK[worst] ? s : worst);
+      }
+    }
+    return {
+      id: o.id,
+      tableId: o.table_id,
+      staff: o.staff,
+      items,
+      createdAt: new Date(o.created_at).getTime(),
+      sentAt: o.sent_at ? new Date(o.sent_at).getTime() : null,
+      kitchenStatus,
+      barStatus,
+      kitchenServedAt: o.kitchen_served_at ? new Date(o.kitchen_served_at).getTime() : null,
+      barServedAt: o.bar_served_at ? new Date(o.bar_served_at).getTime() : null,
+      kitchenDismissed: !!o.kitchen_dismissed,
+      barDismissed: !!o.bar_dismissed,
+      status,
+      billRequested: o.bill_requested,
+      paid: o.paid
+    };
+  });
   const appRow = appStateRows && appStateRows[0] || {};
   const staffNames = (staffRows || []).map((s) => s.name);
   return {
@@ -238,14 +264,26 @@ async function runAction(action, state) {
     case "SEND_TO_KITCHEN": {
       const order = state.orders.find((o) => o.id === action.orderId);
       if (order && order.items.length) {
-        await supabase.from("orders").update({ status: "sent", sent_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", action.orderId);
+        await supabase.from("orders").update({
+          status: "sent",
+          sent_at: (/* @__PURE__ */ new Date()).toISOString(),
+          kitchen_status: "sent",
+          bar_status: "sent",
+          kitchen_dismissed: false,
+          bar_dismissed: false
+        }).eq("id", action.orderId);
       }
       return;
     }
     case "SET_KITCHEN": {
-      const patch = { status: action.status };
-      if (action.status === "served") {
-        patch.served_at = (/* @__PURE__ */ new Date()).toISOString();
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      const patch = {};
+      if (station === "bar") {
+        patch.bar_status = action.status;
+        if (action.status === "served") patch.bar_served_at = (/* @__PURE__ */ new Date()).toISOString();
+      } else {
+        patch.kitchen_status = action.status;
+        if (action.status === "served") patch.kitchen_served_at = (/* @__PURE__ */ new Date()).toISOString();
       }
       await supabase.from("orders").update(patch).eq("id", action.orderId);
       return;
@@ -261,9 +299,21 @@ async function runAction(action, state) {
       return;
     }
     case "DISMISS_ORDER": {
-      await supabase.from("orders").delete().eq("id", action.orderId);
-      if (state.activeOrderId === action.orderId) {
-        await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      const patch = station === "bar" ? { bar_dismissed: true } : { kitchen_dismissed: true };
+      await supabase.from("orders").update(patch).eq("id", action.orderId);
+      if (order) {
+        const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
+        const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
+        const kitchenDone = !kitchenApplies || order.kitchenDismissed || station === "kitchen";
+        const barDone = !barApplies || order.barDismissed || station === "bar";
+        if (kitchenDone && barDone) {
+          await supabase.from("orders").delete().eq("id", action.orderId);
+          if (state.activeOrderId === action.orderId) {
+            await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+          }
+        }
       }
       return;
     }
@@ -302,11 +352,7 @@ function StoreProvider({ children }) {
     });
   }, []);
   const api = useMemo(() => ({ state, dispatch }), [state]);
-  return /* @__PURE__ */ jsxDEV(StoreContext.Provider, { value: api, children }, void 0, false, {
-    fileName: "js/store.js",
-    lineNumber: 358,
-    columnNumber: 10
-  }, this);
+  return /* @__PURE__ */ React.createElement(StoreContext.Provider, { value: api }, children);
 }
 function useStore() {
   return useContext(StoreContext);
@@ -325,13 +371,13 @@ function stationOf(state, menuId) {
   return state.menu.find((m) => m.id === menuId)?.station || "kitchen";
 }
 function useKitchenOrders(state) {
-  return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid").map((o) => ({
+  return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid" && !o.kitchenDismissed).map((o) => ({
     ...o,
     items: o.items.filter((it) => stationOf(state, it.menuId) === "kitchen")
   })).filter((o) => o.items.length > 0);
 }
 function useBarOrders(state) {
-  return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid").map((o) => ({
+  return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid" && !o.barDismissed).map((o) => ({
     ...o,
     items: o.items.filter((it) => stationOf(state, it.menuId) === "bar")
   })).filter((o) => o.items.length > 0);
@@ -1165,10 +1211,10 @@ function KdsView() {
       columnNumber: 9
     }, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
       const startedAt = o.sentAt || o.createdAt;
-      const endedAt = o.servedAt || now;
+      const endedAt = o.kitchenServedAt || now;
       const elapsed = endedAt - startedAt;
-      const red = o.status !== "served" && elapsed > 15 * 60 * 1e3;
-      return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
+      const red = o.kitchenStatus !== "served" && elapsed > 15 * 60 * 1e3;
+      return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.kitchenStatus} ${red ? "over" : ""}`, children: [
         /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
           /* @__PURE__ */ jsxDEV("div", { children: [
             /* @__PURE__ */ jsxDEV("h3", { children: tableName(o.tableId) }, void 0, false, {
@@ -1245,7 +1291,7 @@ function KdsView() {
           columnNumber: 17
         }, this),
         /* @__PURE__ */ jsxDEV("footer", { className: "k-actions", children: [
-          o.status === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "preparing" }), children: [
+          o.kitchenStatus === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "kitchen", status: "preparing" }), children: [
             /* @__PURE__ */ jsxDEV(CookingPot, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 77,
@@ -1257,7 +1303,7 @@ function KdsView() {
             lineNumber: 76,
             columnNumber: 21
           }, this),
-          o.status === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "ready" }), children: [
+          o.kitchenStatus === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "kitchen", status: "ready" }), children: [
             /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 82,
@@ -1269,7 +1315,7 @@ function KdsView() {
             lineNumber: 81,
             columnNumber: 21
           }, this),
-          o.status === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "served" }), children: [
+          o.kitchenStatus === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "kitchen", status: "served" }), children: [
             /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 87,
@@ -1281,7 +1327,7 @@ function KdsView() {
             lineNumber: 86,
             columnNumber: 21
           }, this),
-          /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id }), children: [
+          /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id, station: "kitchen" }), children: [
             /* @__PURE__ */ jsxDEV(X, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 91,
@@ -1366,10 +1412,10 @@ function BarView() {
       /* @__PURE__ */ jsxDEV("p", { children: "All caught up \u2014 no active drink tickets." }, void 0, false, {}, this)
     ] }, void 0, true, {}, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
       const startedAt = o.sentAt || o.createdAt;
-      const endedAt = o.servedAt || now;
+      const endedAt = o.barServedAt || now;
       const elapsed = endedAt - startedAt;
-      const red = o.status !== "served" && elapsed > 15 * 60 * 1e3;
-      return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
+      const red = o.barStatus !== "served" && elapsed > 15 * 60 * 1e3;
+      return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.barStatus} ${red ? "over" : ""}`, children: [
         /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
           /* @__PURE__ */ jsxDEV("div", { children: [
             /* @__PURE__ */ jsxDEV("h3", { children: tableName(o.tableId) }, void 0, false, {}, this),
@@ -1397,19 +1443,19 @@ function BarView() {
           ] }, i, true, {}, this)) }, void 0, false, {}, this)
         ] }, group.cat, true, {}, this)) }, void 0, false, {}, this),
         /* @__PURE__ */ jsxDEV("footer", { className: "k-actions", children: [
-          o.status === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "preparing" }), children: [
+          o.barStatus === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "bar", status: "preparing" }), children: [
             /* @__PURE__ */ jsxDEV(CookingPot2, { size: 16 }, void 0, false, {}, this),
             " Preparing"
           ] }, void 0, true, {}, this),
-          o.status === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "ready" }), children: [
+          o.barStatus === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "bar", status: "ready" }), children: [
             /* @__PURE__ */ jsxDEV(Check2, { size: 16 }, void 0, false, {}, this),
             " Mark Ready"
           ] }, void 0, true, {}, this),
-          o.status === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "served" }), children: [
+          o.barStatus === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "bar", status: "served" }), children: [
             /* @__PURE__ */ jsxDEV(Check2, { size: 16 }, void 0, false, {}, this),
             " Served"
           ] }, void 0, true, {}, this),
-          /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id }), children: [
+          /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id, station: "bar" }), children: [
             /* @__PURE__ */ jsxDEV(X2, { size: 16 }, void 0, false, {}, this),
             " Dismiss"
           ] }, void 0, true, {}, this)
