@@ -50,10 +50,10 @@ function BarView() {
       /* @__PURE__ */ jsxDEV("p", { children: "All caught up \u2014 no active drink tickets." }, void 0, false, {}, this)
     ] }, void 0, true, {}, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
       const startedAt = o.sentAt || o.createdAt;
-      const endedAt = o.servedAt || now;
+      const endedAt = o.barServedAt || now;
       const elapsed = endedAt - startedAt;
-      const red = o.status !== "served" && elapsed > 15 * 60 * 1e3;
-      return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
+      const red = o.barStatus !== "served" && elapsed > 15 * 60 * 1e3;
+      return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.barStatus} ${red ? "over" : ""}`, children: [
         /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
           /* @__PURE__ */ jsxDEV("div", { children: [
             /* @__PURE__ */ jsxDEV("h3", { children: tableName(o.tableId) }, void 0, false, {}, this),
@@ -81,19 +81,19 @@ function BarView() {
           ] }, i, true, {}, this)) }, void 0, false, {}, this)
         ] }, group.cat, true, {}, this)) }, void 0, false, {}, this),
         /* @__PURE__ */ jsxDEV("footer", { className: "k-actions", children: [
-          o.status === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "preparing" }), children: [
+          o.barStatus === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "bar", status: "preparing" }), children: [
             /* @__PURE__ */ jsxDEV(CookingPot, { size: 16 }, void 0, false, {}, this),
             " Preparing"
           ] }, void 0, true, {}, this),
-          o.status === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "ready" }), children: [
+          o.barStatus === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "bar", status: "ready" }), children: [
             /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {}, this),
             " Mark Ready"
           ] }, void 0, true, {}, this),
-          o.status === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "served" }), children: [
+          o.barStatus === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "bar", status: "served" }), children: [
             /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {}, this),
             " Served"
           ] }, void 0, true, {}, this),
-          /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id }), children: [
+          /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id, station: "bar" }), children: [
             /* @__PURE__ */ jsxDEV(X, { size: 16 }, void 0, false, {}, this),
             " Dismiss"
           ] }, void 0, true, {}, this)
