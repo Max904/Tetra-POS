@@ -72,10 +72,10 @@ function KdsView() {
       columnNumber: 9
     }, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
       const startedAt = o.sentAt || o.createdAt;
-      const endedAt = o.servedAt || now;
+      const endedAt = o.kitchenServedAt || now;
       const elapsed = endedAt - startedAt;
-      const red = o.status !== "served" && elapsed > 15 * 60 * 1e3;
-      return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.status} ${red ? "over" : ""}`, children: [
+      const red = o.kitchenStatus !== "served" && elapsed > 15 * 60 * 1e3;
+      return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.kitchenStatus} ${red ? "over" : ""}`, children: [
         /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
           /* @__PURE__ */ jsxDEV("div", { children: [
             /* @__PURE__ */ jsxDEV("h3", { children: tableName(o.tableId) }, void 0, false, {
@@ -152,7 +152,7 @@ function KdsView() {
           columnNumber: 17
         }, this),
         /* @__PURE__ */ jsxDEV("footer", { className: "k-actions", children: [
-          o.status === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "preparing" }), children: [
+          o.kitchenStatus === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "kitchen", status: "preparing" }), children: [
             /* @__PURE__ */ jsxDEV(CookingPot, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 77,
@@ -164,7 +164,7 @@ function KdsView() {
             lineNumber: 76,
             columnNumber: 21
           }, this),
-          o.status === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "ready" }), children: [
+          o.kitchenStatus === "preparing" && /* @__PURE__ */ jsxDEV("button", { className: "ka ready", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "kitchen", status: "ready" }), children: [
             /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 82,
@@ -176,7 +176,7 @@ function KdsView() {
             lineNumber: 81,
             columnNumber: 21
           }, this),
-          o.status === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, status: "served" }), children: [
+          o.kitchenStatus === "ready" && /* @__PURE__ */ jsxDEV("button", { className: "ka serve", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "kitchen", status: "served" }), children: [
             /* @__PURE__ */ jsxDEV(Check, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 87,
@@ -188,7 +188,7 @@ function KdsView() {
             lineNumber: 86,
             columnNumber: 21
           }, this),
-          /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id }), children: [
+          /* @__PURE__ */ jsxDEV("button", { className: "ka dismiss", onClick: () => dispatch({ type: "DISMISS_ORDER", orderId: o.id, station: "kitchen" }), children: [
             /* @__PURE__ */ jsxDEV(X, { size: 16 }, void 0, false, {
               fileName: "<stdin>",
               lineNumber: 91,
