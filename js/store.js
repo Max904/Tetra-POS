@@ -135,13 +135,20 @@ async function runAction(action, state) {
         category: action.category,
         price: action.price,
         stock: action.stock,
+        station: action.station || "kitchen",
       });
       return;
 
     case "UPDATE_ITEM":
       await supabase
         .from("menu_items")
-        .update({ name: action.name, category: action.category, price: action.price, stock: action.stock })
+        .update({
+          name: action.name,
+          category: action.category,
+          price: action.price,
+          stock: action.stock,
+          station: action.station || "kitchen",
+        })
         .eq("id", action.id);
       return;
 
@@ -366,8 +373,18 @@ export function useOrdersByTable(state) {
   return activeByTable;
 }
 
+function stationOf(state, menuId) {
+  return state.menu.find((m) => m.id === menuId)?.station || "kitchen";
+}
+
 export function useKitchenOrders(state) {
-  return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid");
+  return state.orders
+    .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid")
+    .map((o) => ({
+      ...o,
+      items: o.items.filter((it) => stationOf(state, it.menuId) === "kitchen"),
+    }))
+    .filter((o) => o.items.length > 0);
 }
 
 export function useBarOrders(state) {
@@ -375,9 +392,7 @@ export function useBarOrders(state) {
     .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid")
     .map((o) => ({
       ...o,
-      items: o.items.filter(
-        (it) => state.menu.find((m) => m.id === it.menuId)?.category === "Drinks"
-      ),
+      items: o.items.filter((it) => stationOf(state, it.menuId) === "bar"),
     }))
     .filter((o) => o.items.length > 0);
 }
