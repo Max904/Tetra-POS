@@ -5,6 +5,7 @@ import {
   ShoppingCart,
   Printer,
   ChefHat,
+  Beer,
   Sun,
   Moon,
   Clock,
@@ -16,11 +17,13 @@ import { StoreProvider, useStore, useOrdersByTable } from "./store.js";
 import FloorPlanView from "./views/floorplan.jsx";
 import RegisterView from "./views/register.jsx";
 import KdsView from "./views/kds.jsx";
+import BarView from "./views/bar.jsx";
 import SettingsView from "./views/settings.jsx";
 const VIEWS = [
   { key: "floorplan", name: "Tables", icon: LayoutDashboard },
   { key: "register", name: "Register", icon: ShoppingCart },
   { key: "kds", name: "Kitchen", icon: ChefHat },
+  { key: "bar", name: "Bar", icon: Beer },
   { key: "settings", name: "Admin", icon: Printer }
 ];
 function useClock() {
@@ -214,6 +217,11 @@ function Shell() {
         columnNumber: 33
       }, this),
       view === "kds" && /* @__PURE__ */ jsxDEV(KdsView, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 133,
+        columnNumber: 28
+      }, this),
+      view === "bar" && /* @__PURE__ */ jsxDEV(BarView, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 133,
         columnNumber: 28
