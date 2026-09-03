@@ -1,6 +1,6 @@
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { useState } from "react";
-import { Plus, Trash2, User, Square } from "lucide-react";
+import { Plus, Trash2, User, Square, ChefHat, Beer } from "lucide-react";
 import { useStore, LOW_STOCK } from "./../store.js";
 function SettingsView() {
   return /* @__PURE__ */ jsxDEV("div", { className: "settings", children: [
@@ -62,20 +62,22 @@ function MenuManager() {
   const [category, setCategory] = useState(state.categories[0]);
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
+  const [station, setStation] = useState("kitchen");
   const [editing, setEditing] = useState(null);
   const submit = () => {
     if (!name.trim()) return;
     const p = Math.max(0, parseFloat(price) || 0);
     const s = Math.max(0, parseInt(stock, 10) || 0);
     if (editing) {
-      dispatch({ type: "UPDATE_ITEM", id: editing, name: name.trim(), category, price: p, stock: s });
+      dispatch({ type: "UPDATE_ITEM", id: editing, name: name.trim(), category, price: p, stock: s, station });
     } else {
-      dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s });
+      dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s, station });
     }
     setEditing(null);
     setName("");
     setPrice("");
     setStock("");
+    setStation("kitchen");
   };
   const startEdit = (item) => {
     setEditing(item.id);
@@ -83,6 +85,7 @@ function MenuManager() {
     setCategory(item.category);
     setPrice(String(item.price));
     setStock(String(item.stock));
+    setStation(item.station || "kitchen");
   };
   return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
     /* @__PURE__ */ jsxDEV("h2", { children: "Menu" }, void 0, false, {
@@ -122,6 +125,47 @@ function MenuManager() {
         columnNumber: 9
       }, this),
       /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
+        /* @__PURE__ */ jsxDEV("span", { className: "station-label", children: "Sends to:" }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 68,
+          columnNumber: 9
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "station-toggle", role: "group", "aria-label": "Station", children: [
+          /* @__PURE__ */ jsxDEV("button", { type: "button", className: `station-btn ${station === "kitchen" ? "active" : ""}`, onClick: () => setStation("kitchen"), children: [
+            /* @__PURE__ */ jsxDEV(ChefHat, { size: 15 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 68,
+              columnNumber: 11
+            }, this),
+            " Kitchen"
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 68,
+            columnNumber: 11
+          }, this),
+          /* @__PURE__ */ jsxDEV("button", { type: "button", className: `station-btn ${station === "bar" ? "active" : ""}`, onClick: () => setStation("bar"), children: [
+            /* @__PURE__ */ jsxDEV(Beer, { size: 15 }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 68,
+              columnNumber: 11
+            }, this),
+            " Bar"
+          ] }, void 0, true, {
+            fileName: "<stdin>",
+            lineNumber: 68,
+            columnNumber: 11
+          }, this)
+        ] }, void 0, true, {
+          fileName: "<stdin>",
+          lineNumber: 68,
+          columnNumber: 9
+        }, this)
+      ] }, void 0, true, {
+        fileName: "<stdin>",
+        lineNumber: 68,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
         /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: submit, children: [
           /* @__PURE__ */ jsxDEV(Plus, { size: 16 }, void 0, false, {
             fileName: "<stdin>",
@@ -140,6 +184,7 @@ function MenuManager() {
           setName("");
           setPrice("");
           setStock("");
+          setStation("kitchen");
         }, children: "Cancel" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 73,
@@ -163,6 +208,22 @@ function MenuManager() {
           columnNumber: 15
         }, this),
         /* @__PURE__ */ jsxDEV("span", { className: "pl-cat", children: m.category }, void 0, false, {
+          fileName: "<stdin>",
+          lineNumber: 82,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV("span", { className: `pl-station ${(m.station || "kitchen") === "bar" ? "bar" : "kitchen"}`, children: [
+          (m.station || "kitchen") === "bar" ? /* @__PURE__ */ jsxDEV(Beer, { size: 12 }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 82,
+            columnNumber: 15
+          }, this) : /* @__PURE__ */ jsxDEV(ChefHat, { size: 12 }, void 0, false, {
+            fileName: "<stdin>",
+            lineNumber: 82,
+            columnNumber: 15
+          }, this),
+          (m.station || "kitchen") === "bar" ? "Bar" : "Kitchen"
+        ] }, void 0, true, {
           fileName: "<stdin>",
           lineNumber: 82,
           columnNumber: 15
