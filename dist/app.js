@@ -42,6 +42,7 @@ var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // js/store.js
+import { jsx as jsx2 } from "react/jsx-runtime";
 var LOW_STOCK = 5;
 var EMPTY_STATE = {
   staff: [],
@@ -352,7 +353,7 @@ function StoreProvider({ children }) {
     });
   }, []);
   const api = useMemo(() => ({ state, dispatch }), [state]);
-  return /* @__PURE__ */ React.createElement(StoreContext.Provider, { value: api }, children);
+  return /* @__PURE__ */ jsx2(StoreContext.Provider, { value: api, children });
 }
 function useStore() {
   return useContext(StoreContext);
