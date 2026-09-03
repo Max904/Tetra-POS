@@ -302,7 +302,11 @@ function StoreProvider({ children }) {
     });
   }, []);
   const api = useMemo(() => ({ state, dispatch }), [state]);
-  return /* @__PURE__ */ React.createElement(StoreContext.Provider, { value: api }, children);
+  return /* @__PURE__ */ jsxDEV(StoreContext.Provider, { value: api, children }, void 0, false, {
+    fileName: "js/store.js",
+    lineNumber: 358,
+    columnNumber: 10
+  }, this);
 }
 function useStore() {
   return useContext(StoreContext);
