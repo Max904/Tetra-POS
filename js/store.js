@@ -370,4 +370,16 @@ export function useKitchenOrders(state) {
   return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid");
 }
 
+export function useBarOrders(state) {
+  return state.orders
+    .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid")
+    .map((o) => ({
+      ...o,
+      items: o.items.filter(
+        (it) => state.menu.find((m) => m.id === it.menuId)?.category === "Drinks"
+      ),
+    }))
+    .filter((o) => o.items.length > 0);
+}
+
 export { LOW_STOCK };
