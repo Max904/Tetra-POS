@@ -59,18 +59,51 @@ async function fetchAll() {
     });
   }
 
-  const orders = (orderRows || []).map((o) => ({
-    id: o.id,
-    tableId: o.table_id,
-    staff: o.staff,
-    items: itemsByOrder[o.id] || [],
-    createdAt: new Date(o.created_at).getTime(),
-    sentAt: o.sent_at ? new Date(o.sent_at).getTime() : null,
-    servedAt: o.served_at ? new Date(o.served_at).getTime() : null,
-    status: o.status,
-    billRequested: o.bill_requested,
-    paid: o.paid,
-  }));
+  const stationById = {};
+  for (const m of menuRows || []) {
+    stationById[m.id] = m.station || "kitchen";
+  }
+
+  const STAGE_RANK = { sent: 0, preparing: 1, ready: 2, served: 3 };
+
+  const orders = (orderRows || []).map((o) => {
+    const items = itemsByOrder[o.id] || [];
+    const kitchenApplies = items.some((it) => (stationById[it.menuId] || "kitchen") === "kitchen");
+    const barApplies = items.some((it) => (stationById[it.menuId] || "kitchen") === "bar");
+    const kitchenStatus = o.kitchen_status || "sent";
+    const barStatus = o.bar_status || "sent";
+
+    // The order's overall "status" (used by register/floorplan/header) tracks
+    // whichever station is furthest behind, so it only reads "served" once
+    // BOTH the kitchen and the bar are done with their part of the ticket.
+    let status = o.status;
+    if (status !== "new" && status !== "paid") {
+      const active = [];
+      if (kitchenApplies) active.push(kitchenStatus);
+      if (barApplies) active.push(barStatus);
+      if (active.length) {
+        status = active.reduce((worst, s) => (STAGE_RANK[s] < STAGE_RANK[worst] ? s : worst));
+      }
+    }
+
+    return {
+      id: o.id,
+      tableId: o.table_id,
+      staff: o.staff,
+      items,
+      createdAt: new Date(o.created_at).getTime(),
+      sentAt: o.sent_at ? new Date(o.sent_at).getTime() : null,
+      kitchenStatus,
+      barStatus,
+      kitchenServedAt: o.kitchen_served_at ? new Date(o.kitchen_served_at).getTime() : null,
+      barServedAt: o.bar_served_at ? new Date(o.bar_served_at).getTime() : null,
+      kitchenDismissed: !!o.kitchen_dismissed,
+      barDismissed: !!o.bar_dismissed,
+      status,
+      billRequested: o.bill_requested,
+      paid: o.paid,
+    };
+  });
 
   const appRow = (appStateRows && appStateRows[0]) || {};
   const staffNames = (staffRows || []).map((s) => s.name);
@@ -261,16 +294,28 @@ async function runAction(action, state) {
       if (order && order.items.length) {
         await supabase
           .from("orders")
-          .update({ status: "sent", sent_at: new Date().toISOString() })
+          .update({
+            status: "sent",
+            sent_at: new Date().toISOString(),
+            kitchen_status: "sent",
+            bar_status: "sent",
+            kitchen_dismissed: false,
+            bar_dismissed: false,
+          })
           .eq("id", action.orderId);
       }
       return;
     }
 
     case "SET_KITCHEN": {
-      const patch = { status: action.status };
-      if (action.status === "served") {
-        patch.served_at = new Date().toISOString();
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      const patch = {};
+      if (station === "bar") {
+        patch.bar_status = action.status;
+        if (action.status === "served") patch.bar_served_at = new Date().toISOString();
+      } else {
+        patch.kitchen_status = action.status;
+        if (action.status === "served") patch.kitchen_served_at = new Date().toISOString();
       }
       await supabase.from("orders").update(patch).eq("id", action.orderId);
       return;
@@ -289,9 +334,25 @@ async function runAction(action, state) {
     }
 
     case "DISMISS_ORDER": {
-      await supabase.from("orders").delete().eq("id", action.orderId);
-      if (state.activeOrderId === action.orderId) {
-        await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      const patch = station === "bar" ? { bar_dismissed: true } : { kitchen_dismissed: true };
+      await supabase.from("orders").update(patch).eq("id", action.orderId);
+
+      // Only wipe the order (and its items) once every station that had
+      // items on it has been dismissed — otherwise dismissing from one
+      // station would yank the ticket out from under the other one.
+      if (order) {
+        const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
+        const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
+        const kitchenDone = !kitchenApplies || order.kitchenDismissed || station === "kitchen";
+        const barDone = !barApplies || order.barDismissed || station === "bar";
+        if (kitchenDone && barDone) {
+          await supabase.from("orders").delete().eq("id", action.orderId);
+          if (state.activeOrderId === action.orderId) {
+            await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
+          }
+        }
       }
       return;
     }
@@ -379,7 +440,7 @@ function stationOf(state, menuId) {
 
 export function useKitchenOrders(state) {
   return state.orders
-    .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid")
+    .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid" && !o.kitchenDismissed)
     .map((o) => ({
       ...o,
       items: o.items.filter((it) => stationOf(state, it.menuId) === "kitchen"),
@@ -389,7 +450,7 @@ export function useKitchenOrders(state) {
 
 export function useBarOrders(state) {
   return state.orders
-    .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid")
+    .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid" && !o.barDismissed)
     .map((o) => ({
       ...o,
       items: o.items.filter((it) => stationOf(state, it.menuId) === "bar"),
