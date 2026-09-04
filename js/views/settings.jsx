@@ -1,7 +1,21 @@
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { useState } from "react";
-import { Plus, Trash2, User, Square, ChefHat, Beer } from "lucide-react";
+import { Plus, Trash2, User, Square, ChefHat, Beer, ImageOff, Upload, Loader2 } from "lucide-react";
 import { useStore, LOW_STOCK } from "./../store.js";
+import { supabase } from "./../supabaseClient.js";
+
+const MENU_IMAGE_BUCKET = "menu-images";
+
+async function uploadMenuImage(file) {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from(MENU_IMAGE_BUCKET)
+    .upload(path, file, { cacheControl: "3600", upsert: false });
+  if (uploadError) throw uploadError;
+  const { data } = supabase.storage.from(MENU_IMAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
 function SettingsView() {
   return /* @__PURE__ */ jsxDEV("div", { className: "settings", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
@@ -63,21 +77,43 @@ function MenuManager() {
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [station, setStation] = useState("kitchen");
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [editing, setEditing] = useState(null);
+  const handleFileChange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      const url = await uploadMenuImage(file);
+      setImageUrl(url);
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      setUploadError("Upload failed. Check the bucket is set up.");
+    } finally {
+      setUploading(false);
+    }
+  };
   const submit = () => {
     if (!name.trim()) return;
     const p = Math.max(0, parseFloat(price) || 0);
     const s = Math.max(0, parseInt(stock, 10) || 0);
+    const img = imageUrl.trim() || null;
     if (editing) {
-      dispatch({ type: "UPDATE_ITEM", id: editing, name: name.trim(), category, price: p, stock: s, station });
+      dispatch({ type: "UPDATE_ITEM", id: editing, name: name.trim(), category, price: p, stock: s, station, imageUrl: img });
     } else {
-      dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s, station });
+      dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s, station, imageUrl: img });
     }
     setEditing(null);
     setName("");
     setPrice("");
     setStock("");
     setStation("kitchen");
+    setImageUrl("");
+    setUploadError("");
   };
   const startEdit = (item) => {
     setEditing(item.id);
@@ -86,6 +122,7 @@ function MenuManager() {
     setPrice(String(item.price));
     setStock(String(item.stock));
     setStation(item.station || "kitchen");
+    setImageUrl(item.image_url || "");
   };
   return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
     /* @__PURE__ */ jsxDEV("h2", { children: "Menu" }, void 0, false, {
@@ -165,6 +202,18 @@ function MenuManager() {
         lineNumber: 68,
         columnNumber: 9
       }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "form-row image-row", children: [
+        imageUrl ? /* @__PURE__ */ jsxDEV("img", { src: imageUrl, alt: "", className: "image-preview", onError: (e) => {
+          e.target.style.display = "none";
+        } }, void 0, false, {}, this) : /* @__PURE__ */ jsxDEV("span", { className: "image-preview placeholder", children: uploading ? /* @__PURE__ */ jsxDEV(Loader2, { size: 16, className: "spin" }, void 0, false, {}, this) : /* @__PURE__ */ jsxDEV(ImageOff, { size: 16 }, void 0, false, {}, this) }, void 0, false, {}, this),
+        /* @__PURE__ */ jsxDEV("input", { placeholder: "Image URL (optional)", value: imageUrl, onChange: (e) => setImageUrl(e.target.value) }, void 0, false, {}, this),
+        /* @__PURE__ */ jsxDEV("label", { className: "btn ghost upload-btn", children: [
+          /* @__PURE__ */ jsxDEV(Upload, { size: 15 }, void 0, false, {}, this),
+          uploading ? "Uploading\u2026" : "Upload photo",
+          /* @__PURE__ */ jsxDEV("input", { type: "file", accept: "image/*", onChange: handleFileChange, disabled: uploading, style: { display: "none" } }, void 0, false, {}, this)
+        ] }, void 0, true, {}, this)
+      ] }, void 0, true, {}, this),
+      uploadError && /* @__PURE__ */ jsxDEV("p", { className: "upload-error", children: uploadError }, void 0, false, {}, this),
       /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
         /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: submit, children: [
           /* @__PURE__ */ jsxDEV(Plus, { size: 16 }, void 0, false, {
@@ -185,6 +234,8 @@ function MenuManager() {
           setPrice("");
           setStock("");
           setStation("kitchen");
+          setImageUrl("");
+          setUploadError("");
         }, children: "Cancel" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 73,
@@ -202,6 +253,9 @@ function MenuManager() {
     }, this),
     /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: state.menu.map((m) => /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
       /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: [
+        m.image_url ? /* @__PURE__ */ jsxDEV("img", { src: m.image_url, alt: "", className: "pl-photo", onError: (e) => {
+          e.target.style.display = "none";
+        } }, void 0, false, {}, this) : /* @__PURE__ */ jsxDEV("span", { className: "pl-photo placeholder", children: /* @__PURE__ */ jsxDEV(ImageOff, { size: 13 }, void 0, false, {}, this) }, void 0, false, {}, this),
         /* @__PURE__ */ jsxDEV("span", { className: "pl-name", children: m.name }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 81,
