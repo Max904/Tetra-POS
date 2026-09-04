@@ -42,6 +42,25 @@ var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     params: { eventsPerSecond: 10 }
   }
 });
+var MENU_IMAGE_BUCKET = "menu-images";
+function menuImagePathFromUrl(url) {
+  if (!url) return null;
+  const marker = `/storage/v1/object/public/${MENU_IMAGE_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  return url.slice(idx + marker.length);
+}
+async function deleteMenuImagePath(path) {
+  if (!path) return;
+  try {
+    await supabase.storage.from(MENU_IMAGE_BUCKET).remove([path]);
+  } catch (err) {
+    console.warn("Failed to delete menu image:", err);
+  }
+}
+async function deleteMenuImageByUrl(url) {
+  await deleteMenuImagePath(menuImagePathFromUrl(url));
+}
 
 // js/store.js
 var LOW_STOCK = 5;
@@ -190,9 +209,15 @@ async function runAction(action, state) {
         image_url: action.imageUrl || null
       }).eq("id", action.id);
       return;
-    case "DELETE_ITEM":
+    case "DELETE_ITEM": {
+      const item = state.menu.find((m) => m.id === action.id);
       await supabase.from("menu_items").delete().eq("id", action.id);
+      const stillUsed = state.menu.some((m) => m.id !== action.id && m.image_url === item?.image_url);
+      if (item?.image_url && !stillUsed) {
+        await deleteMenuImageByUrl(item.image_url);
+      }
       return;
+    }
     case "ADD_TABLE":
       await supabase.from("tables").insert({
         id: `t${Date.now()}`,
@@ -358,7 +383,7 @@ function StoreProvider({ children }) {
   const api = useMemo(() => ({ state, dispatch }), [state]);
   return /* @__PURE__ */ jsxDEV(StoreContext.Provider, { value: api, children }, void 0, false, {
     fileName: "js/store.js",
-    lineNumber: 421,
+    lineNumber: 430,
     columnNumber: 10
   }, this);
 }
@@ -1560,14 +1585,13 @@ function BarView() {
 // js/views/settings.jsx
 import { useState as useState6 } from "react";
 import { Plus as Plus2, Trash2 as Trash22, User, Square, ChefHat as ChefHat3, Beer as Beer2, ImageOff as ImageOff2, Upload, Loader2 } from "lucide-react";
-var MENU_IMAGE_BUCKET = "menu-images";
 async function uploadMenuImage(file) {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const { error: uploadError } = await supabase.storage.from(MENU_IMAGE_BUCKET).upload(path, file, { cacheControl: "3600", upsert: false });
   if (uploadError) throw uploadError;
   const { data } = supabase.storage.from(MENU_IMAGE_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  return { url: data.publicUrl, path };
 }
 function SettingsView() {
   return /* @__PURE__ */ jsxDEV("div", { className: "settings", children: [
@@ -1634,6 +1658,19 @@ function MenuManager() {
   const [uploading, setUploading] = useState6(false);
   const [uploadError, setUploadError] = useState6("");
   const [editing, setEditing] = useState6(null);
+  const [originalImageUrl, setOriginalImageUrl] = useState6("");
+  const [pendingUploadPath, setPendingUploadPath] = useState6(null);
+  const resetForm = () => {
+    setEditing(null);
+    setName("");
+    setPrice("");
+    setStock("");
+    setStation("kitchen");
+    setImageUrl("");
+    setOriginalImageUrl("");
+    setPendingUploadPath(null);
+    setUploadError("");
+  };
   const handleFileChange = async (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -1641,7 +1678,11 @@ function MenuManager() {
     setUploading(true);
     setUploadError("");
     try {
-      const url = await uploadMenuImage(file);
+      const { url, path } = await uploadMenuImage(file);
+      if (pendingUploadPath) {
+        deleteMenuImagePath(pendingUploadPath);
+      }
+      setPendingUploadPath(path);
       setImageUrl(url);
     } catch (err) {
       console.error("Image upload failed:", err);
@@ -1660,15 +1701,14 @@ function MenuManager() {
     } else {
       dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s, station, imageUrl: img });
     }
-    setEditing(null);
-    setName("");
-    setPrice("");
-    setStock("");
-    setStation("kitchen");
-    setImageUrl("");
-    setUploadError("");
+    if (originalImageUrl && originalImageUrl !== img) {
+      const stillUsed = state.menu.some((m) => m.id !== editing && m.image_url === originalImageUrl);
+      if (!stillUsed) deleteMenuImageByUrl(originalImageUrl);
+    }
+    resetForm();
   };
   const startEdit = (item) => {
+    if (pendingUploadPath) deleteMenuImagePath(pendingUploadPath);
     setEditing(item.id);
     setName(item.name);
     setCategory(item.category);
@@ -1676,6 +1716,9 @@ function MenuManager() {
     setStock(String(item.stock));
     setStation(item.station || "kitchen");
     setImageUrl(item.image_url || "");
+    setOriginalImageUrl(item.image_url || "");
+    setPendingUploadPath(null);
+    setUploadError("");
   };
   return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
     /* @__PURE__ */ jsxDEV("h2", { children: "Menu" }, void 0, false, {
@@ -1782,13 +1825,8 @@ function MenuManager() {
           columnNumber: 11
         }, this),
         editing && /* @__PURE__ */ jsxDEV("button", { className: "btn ghost", onClick: () => {
-          setEditing(null);
-          setName("");
-          setPrice("");
-          setStock("");
-          setStation("kitchen");
-          setImageUrl("");
-          setUploadError("");
+          if (pendingUploadPath) deleteMenuImagePath(pendingUploadPath);
+          resetForm();
         }, children: "Cancel" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 73,
