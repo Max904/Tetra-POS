@@ -2,9 +2,7 @@ import { jsxDEV } from "react/jsx-dev-runtime";
 import { useState } from "react";
 import { Plus, Trash2, User, Square, ChefHat, Beer, ImageOff, Upload, Loader2 } from "lucide-react";
 import { useStore, LOW_STOCK } from "./../store.js";
-import { supabase } from "./../supabaseClient.js";
-
-const MENU_IMAGE_BUCKET = "menu-images";
+import { supabase, MENU_IMAGE_BUCKET, deleteMenuImagePath, deleteMenuImageByUrl } from "./../supabaseClient.js";
 
 async function uploadMenuImage(file) {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -14,7 +12,7 @@ async function uploadMenuImage(file) {
     .upload(path, file, { cacheControl: "3600", upsert: false });
   if (uploadError) throw uploadError;
   const { data } = supabase.storage.from(MENU_IMAGE_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  return { url: data.publicUrl, path };
 }
 function SettingsView() {
   return /* @__PURE__ */ jsxDEV("div", { className: "settings", children: [
@@ -81,6 +79,26 @@ function MenuManager() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [editing, setEditing] = useState(null);
+  // The image_url this item already had in the database when we started
+  // editing it ("" for a brand-new item) — used to know what to clean up
+  // in Storage once the form is saved.
+  const [originalImageUrl, setOriginalImageUrl] = useState("");
+  // The Storage path of a file we uploaded during this add/edit session
+  // that hasn't been saved to the database yet. If it gets replaced or the
+  // form is cancelled, this is the one we delete — it would otherwise sit
+  // in the bucket forever unused.
+  const [pendingUploadPath, setPendingUploadPath] = useState(null);
+  const resetForm = () => {
+    setEditing(null);
+    setName("");
+    setPrice("");
+    setStock("");
+    setStation("kitchen");
+    setImageUrl("");
+    setOriginalImageUrl("");
+    setPendingUploadPath(null);
+    setUploadError("");
+  };
   const handleFileChange = async (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -88,7 +106,14 @@ function MenuManager() {
     setUploading(true);
     setUploadError("");
     try {
-      const url = await uploadMenuImage(file);
+      const { url, path } = await uploadMenuImage(file);
+      // Uploaded a photo earlier in this same session without saving yet?
+      // That one's now orphaned — remove it instead of leaving it in the
+      // bucket unused.
+      if (pendingUploadPath) {
+        deleteMenuImagePath(pendingUploadPath);
+      }
+      setPendingUploadPath(path);
       setImageUrl(url);
     } catch (err) {
       console.error("Image upload failed:", err);
@@ -107,15 +132,19 @@ function MenuManager() {
     } else {
       dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s, station, imageUrl: img });
     }
-    setEditing(null);
-    setName("");
-    setPrice("");
-    setStock("");
-    setStation("kitchen");
-    setImageUrl("");
-    setUploadError("");
+    // Replacing (or clearing) a photo the item already had? The old file in
+    // Storage is now unused, unless some other item still points at the
+    // same URL (e.g. a manually pasted external link shared by two items).
+    if (originalImageUrl && originalImageUrl !== img) {
+      const stillUsed = state.menu.some((m) => m.id !== editing && m.image_url === originalImageUrl);
+      if (!stillUsed) deleteMenuImageByUrl(originalImageUrl);
+    }
+    resetForm();
   };
   const startEdit = (item) => {
+    // Leaving a half-finished add/edit with an uploaded-but-unsaved photo?
+    // Clean that one up before switching to a different item.
+    if (pendingUploadPath) deleteMenuImagePath(pendingUploadPath);
     setEditing(item.id);
     setName(item.name);
     setCategory(item.category);
@@ -123,6 +152,9 @@ function MenuManager() {
     setStock(String(item.stock));
     setStation(item.station || "kitchen");
     setImageUrl(item.image_url || "");
+    setOriginalImageUrl(item.image_url || "");
+    setPendingUploadPath(null);
+    setUploadError("");
   };
   return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
     /* @__PURE__ */ jsxDEV("h2", { children: "Menu" }, void 0, false, {
@@ -229,13 +261,8 @@ function MenuManager() {
           columnNumber: 11
         }, this),
         editing && /* @__PURE__ */ jsxDEV("button", { className: "btn ghost", onClick: () => {
-          setEditing(null);
-          setName("");
-          setPrice("");
-          setStock("");
-          setStation("kitchen");
-          setImageUrl("");
-          setUploadError("");
+          if (pendingUploadPath) deleteMenuImagePath(pendingUploadPath);
+          resetForm();
         }, children: "Cancel" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 73,
