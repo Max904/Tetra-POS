@@ -11,9 +11,13 @@ import {
   Clock,
   User,
   ChevronDown,
-  LayoutDashboard
+  LayoutDashboard,
+  Bell,
+  Users
 } from "lucide-react";
 import { StoreProvider, useStore, useOrdersByTable } from "./store.js";
+import { getDeviceRole, setDeviceRole } from "./deviceRole.js";
+import { useReadyAlerts } from "./useReadyAlerts.js";
 import FloorPlanView from "./views/floorplan.jsx";
 import RegisterView from "./views/register.jsx";
 import KdsView from "./views/kds.jsx";
@@ -65,6 +69,45 @@ function ThemeToggle({ theme, setTheme }) {
     this
   );
 }
+const ROLE_ICONS = { waiter: Users, kitchen: ChefHat, bar: Beer };
+const ROLE_LABELS = { waiter: "Waiter", kitchen: "Kitchen", bar: "Bar" };
+
+function RoleSwitch({ role, onChange }) {
+  const RoleIcon = ROLE_ICONS[role] || Users;
+  return jsxDEV(
+    "label",
+    {
+      className: "role-switch",
+      title: "This device's role — controls which screen gets the pickup bell",
+      children: [
+        jsxDEV(RoleIcon, { size: 16 }),
+        jsxDEV("select", {
+          value: role,
+          onChange: (e) => onChange(e.target.value),
+          children: Object.keys(ROLE_LABELS).map((r) =>
+            jsxDEV("option", { value: r, children: ROLE_LABELS[r] }, r)
+          )
+        }),
+        jsxDEV(ChevronDown, { size: 14 })
+      ]
+    }
+  );
+}
+
+function ReadyBell({ count }) {
+  return jsxDEV(
+    "div",
+    {
+      className: `ready-bell icon-btn ${count ? "ringing" : ""}`,
+      title: count ? `${count} order${count === 1 ? "" : "s"} ready for pickup` : "No orders ready for pickup",
+      children: [
+        jsxDEV(Bell, { size: 18 }),
+        count > 0 && jsxDEV("span", { className: "ready-badge", children: count })
+      ]
+    }
+  );
+}
+
 function Header({ view, setView, theme, setTheme }) {
   const { state, dispatch } = useStore();
   const now = useClock();
@@ -72,6 +115,15 @@ function Header({ view, setView, theme, setTheme }) {
   const activeOrder = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const liveCount = Object.values(ordersByTable).filter((o) => o.items.length && o.status !== "new").length;
   const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const [role, setRole] = useState(() => getDeviceRole());
+  const handleRoleChange = (next) => {
+    setDeviceRole(next);
+    setRole(next);
+  };
+  // Runs on every device regardless of which view is on screen, since
+  // Header is always mounted — that's what lets a waiter walking around on
+  // the Floor Plan or Register view still hear the bell.
+  const readyOrders = useReadyAlerts(state.orders, role);
   return /* @__PURE__ */ jsxDEV("header", { className: "header", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "brand", children: [
       /* @__PURE__ */ jsxDEV("span", { className: "brand-mark", children: "T" }, void 0, false, {
@@ -175,6 +227,8 @@ function Header({ view, setView, theme, setTheme }) {
         lineNumber: 106,
         columnNumber: 9
       }, this),
+      role === "waiter" && jsxDEV(ReadyBell, { count: readyOrders.length }),
+      jsxDEV(RoleSwitch, { role, onChange: handleRoleChange }),
       /* @__PURE__ */ jsxDEV(ThemeToggle, { theme, setTheme }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 111,

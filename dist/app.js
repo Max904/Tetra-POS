@@ -17,8 +17,89 @@ import {
   Clock,
   User as User2,
   ChevronDown,
-  LayoutDashboard
+  LayoutDashboard,
+  Bell,
+  Users
 } from "lucide-react";
+
+// js/deviceRole.js
+var STORAGE_KEY = "tetra:deviceRole";
+var VALID_ROLES = ["waiter", "kitchen", "bar"];
+function getDeviceRole() {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    return VALID_ROLES.includes(stored) ? stored : "waiter";
+  } catch {
+    return "waiter";
+  }
+}
+function setDeviceRole(role) {
+  if (!VALID_ROLES.includes(role)) return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, role);
+  } catch {
+  }
+}
+
+// js/notify.js
+var audioCtx = null;
+function getCtx() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new Ctx();
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+function tone(ctx, freq, startAt, duration, peak) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, startAt);
+  gain.gain.linearRampToValueAtTime(peak, startAt + 0.02);
+  gain.gain.exponentialRampToValueAtTime(1e-4, startAt + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(startAt);
+  osc.stop(startAt + duration + 0.02);
+}
+function playReadyBell() {
+  try {
+    const ctx = getCtx();
+    const now2 = ctx.currentTime;
+    tone(ctx, 880, now2, 0.32, 0.2);
+    tone(ctx, 659.25, now2 + 0.16, 0.42, 0.2);
+  } catch {
+  }
+}
+
+// js/useReadyAlerts.js
+import { useEffect as useEffect6, useRef as useRef2, useState as useState7 } from "react";
+function useReadyAlerts(orders, deviceRole) {
+  const prevStatusRef = useRef2({});
+  const [readyOrders, setReadyOrders] = useState7([]);
+  useEffect6(() => {
+    const prevStatus = prevStatusRef.current;
+    const nextStatus = {};
+    let justBecameReady = false;
+    for (const order of orders) {
+      nextStatus[order.id] = order.status;
+      const wasReady = prevStatus[order.id] === "ready";
+      if (order.status === "ready" && prevStatus[order.id] && !wasReady) {
+        justBecameReady = true;
+      }
+    }
+    prevStatusRef.current = nextStatus;
+    if (justBecameReady && deviceRole === "waiter") {
+      playReadyBell();
+    }
+    setReadyOrders(orders.filter((o) => o.status === "ready" && !o.paid));
+  }, [orders, deviceRole]);
+  return readyOrders;
+}
 
 // js/store.js
 import {
@@ -2063,6 +2144,42 @@ function ThemeToggle({ theme, setTheme }) {
     this
   );
 }
+var ROLE_ICONS = { waiter: Users, kitchen: ChefHat4, bar: Beer3 };
+var ROLE_LABELS = { waiter: "Waiter", kitchen: "Kitchen", bar: "Bar" };
+function RoleSwitch({ role, onChange }) {
+  const RoleIcon = ROLE_ICONS[role] || Users;
+  return jsxDEV(
+    "label",
+    {
+      className: "role-switch",
+      title: "This device's role \u2014 controls which screen gets the pickup bell",
+      children: [
+        jsxDEV(RoleIcon, { size: 16 }),
+        jsxDEV("select", {
+          value: role,
+          onChange: (e) => onChange(e.target.value),
+          children: Object.keys(ROLE_LABELS).map(
+            (r) => jsxDEV("option", { value: r, children: ROLE_LABELS[r] }, r)
+          )
+        }),
+        jsxDEV(ChevronDown, { size: 14 })
+      ]
+    }
+  );
+}
+function ReadyBell({ count }) {
+  return jsxDEV(
+    "div",
+    {
+      className: `ready-bell icon-btn ${count ? "ringing" : ""}`,
+      title: count ? `${count} order${count === 1 ? "" : "s"} ready for pickup` : "No orders ready for pickup",
+      children: [
+        jsxDEV(Bell, { size: 18 }),
+        count > 0 && jsxDEV("span", { className: "ready-badge", children: count })
+      ]
+    }
+  );
+}
 function Header({ view, setView, theme, setTheme }) {
   const { state, dispatch } = useStore();
   const now = useClock();
@@ -2070,6 +2187,12 @@ function Header({ view, setView, theme, setTheme }) {
   const activeOrder = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const liveCount = Object.values(ordersByTable).filter((o) => o.items.length && o.status !== "new").length;
   const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const [role, setRole] = useState6(() => getDeviceRole());
+  const handleRoleChange = (next) => {
+    setDeviceRole(next);
+    setRole(next);
+  };
+  const readyOrders = useReadyAlerts(state.orders, role);
   return /* @__PURE__ */ jsxDEV("header", { className: "header", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "brand", children: [
       /* @__PURE__ */ jsxDEV("span", { className: "brand-mark", children: "T" }, void 0, false, {
@@ -2173,6 +2296,8 @@ function Header({ view, setView, theme, setTheme }) {
         lineNumber: 106,
         columnNumber: 9
       }, this),
+      role === "waiter" && jsxDEV(ReadyBell, { count: readyOrders.length }),
+      jsxDEV(RoleSwitch, { role, onChange: handleRoleChange }),
       /* @__PURE__ */ jsxDEV(ThemeToggle, { theme, setTheme }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 111,

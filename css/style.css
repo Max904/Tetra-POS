@@ -239,6 +239,76 @@ select:focus {
   color: var(--text);
 }
 
+.role-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 9px;
+  color: var(--accent-2);
+}
+.role-switch select {
+  border: none;
+  background: transparent;
+  padding: 0 18px 0 0;
+  color: var(--text);
+  font-weight: 600;
+  appearance: none;
+  cursor: pointer;
+}
+.role-switch svg:last-child {
+  margin-left: -16px;
+  pointer-events: none;
+  color: var(--muted);
+}
+
+.ready-bell {
+  position: relative;
+}
+.ready-bell.ringing {
+  color: var(--orange);
+  border-color: var(--orange);
+  animation: bell-shake 1.6s ease-in-out infinite;
+}
+.ready-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--orange);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--panel);
+}
+@keyframes bell-shake {
+  0%, 80%, 100% {
+    transform: rotate(0);
+  }
+  82% {
+    transform: rotate(-12deg);
+  }
+  84% {
+    transform: rotate(10deg);
+  }
+  86% {
+    transform: rotate(-8deg);
+  }
+  88% {
+    transform: rotate(6deg);
+  }
+  90% {
+    transform: rotate(0);
+  }
+}
+
 /* ---------- Main ---------- */
 .main {
   flex: 1;
