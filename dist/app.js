@@ -5,7 +5,7 @@ function jsxDEV(type, props, key) {
 }
 
 // js/app.jsx
-import { useEffect as useEffect5, useState as useState6 } from "react";
+import { useEffect as useEffect6, useState as useState7 } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ShoppingCart,
@@ -21,85 +21,6 @@ import {
   Bell,
   Users
 } from "lucide-react";
-
-// js/deviceRole.js
-var STORAGE_KEY = "tetra:deviceRole";
-var VALID_ROLES = ["waiter", "kitchen", "bar"];
-function getDeviceRole() {
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    return VALID_ROLES.includes(stored) ? stored : "waiter";
-  } catch {
-    return "waiter";
-  }
-}
-function setDeviceRole(role) {
-  if (!VALID_ROLES.includes(role)) return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, role);
-  } catch {
-  }
-}
-
-// js/notify.js
-var audioCtx = null;
-function getCtx() {
-  if (!audioCtx) {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new Ctx();
-  }
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
-  return audioCtx;
-}
-function tone(ctx, freq, startAt, duration, peak) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "sine";
-  osc.frequency.value = freq;
-  gain.gain.setValueAtTime(0, startAt);
-  gain.gain.linearRampToValueAtTime(peak, startAt + 0.02);
-  gain.gain.exponentialRampToValueAtTime(1e-4, startAt + duration);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(startAt);
-  osc.stop(startAt + duration + 0.02);
-}
-function playReadyBell() {
-  try {
-    const ctx = getCtx();
-    const now2 = ctx.currentTime;
-    tone(ctx, 880, now2, 0.32, 0.2);
-    tone(ctx, 659.25, now2 + 0.16, 0.42, 0.2);
-  } catch {
-  }
-}
-
-// js/useReadyAlerts.js
-import { useEffect as useEffect6, useRef as useRef2, useState as useState7 } from "react";
-function useReadyAlerts(orders, deviceRole) {
-  const prevStatusRef = useRef2({});
-  const [readyOrders, setReadyOrders] = useState7([]);
-  useEffect6(() => {
-    const prevStatus = prevStatusRef.current;
-    const nextStatus = {};
-    let justBecameReady = false;
-    for (const order of orders) {
-      nextStatus[order.id] = order.status;
-      const wasReady = prevStatus[order.id] === "ready";
-      if (order.status === "ready" && prevStatus[order.id] && !wasReady) {
-        justBecameReady = true;
-      }
-    }
-    prevStatusRef.current = nextStatus;
-    if (justBecameReady && deviceRole === "waiter") {
-      playReadyBell();
-    }
-    setReadyOrders(orders.filter((o) => o.status === "ready" && !o.paid));
-  }, [orders, deviceRole]);
-  return readyOrders;
-}
 
 // js/store.js
 import {
@@ -123,7 +44,6 @@ var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // js/store.js
-import { jsx as jsx2 } from "react/jsx-runtime";
 var LOW_STOCK = 5;
 var EMPTY_STATE = {
   staff: [],
@@ -256,7 +176,8 @@ async function runAction(action, state) {
         category: action.category,
         price: action.price,
         stock: action.stock,
-        station: action.station || "kitchen"
+        station: action.station || "kitchen",
+        image_url: action.imageUrl || null
       });
       return;
     case "UPDATE_ITEM":
@@ -265,7 +186,8 @@ async function runAction(action, state) {
         category: action.category,
         price: action.price,
         stock: action.stock,
-        station: action.station || "kitchen"
+        station: action.station || "kitchen",
+        image_url: action.imageUrl || null
       }).eq("id", action.id);
       return;
     case "DELETE_ITEM":
@@ -434,7 +356,11 @@ function StoreProvider({ children }) {
     });
   }, []);
   const api = useMemo(() => ({ state, dispatch }), [state]);
-  return /* @__PURE__ */ jsx2(StoreContext.Provider, { value: api, children });
+  return /* @__PURE__ */ jsxDEV(StoreContext.Provider, { value: api, children }, void 0, false, {
+    fileName: "js/store.js",
+    lineNumber: 421,
+    columnNumber: 10
+  }, this);
 }
 function useStore() {
   return useContext(StoreContext);
@@ -463,6 +389,87 @@ function useBarOrders(state) {
     ...o,
     items: o.items.filter((it) => stationOf(state, it.menuId) === "bar")
   })).filter((o) => o.items.length > 0);
+}
+
+// js/deviceRole.js
+var STORAGE_KEY = "tetra:deviceRole";
+var VALID_ROLES = ["waiter", "kitchen", "bar"];
+function getDeviceRole() {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    return VALID_ROLES.includes(stored) ? stored : "waiter";
+  } catch {
+    return "waiter";
+  }
+}
+function setDeviceRole(role) {
+  if (!VALID_ROLES.includes(role)) return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, role);
+  } catch {
+  }
+}
+
+// js/useReadyAlerts.js
+import { useEffect as useEffect2, useRef as useRef2, useState as useState2 } from "react";
+
+// js/notify.js
+var audioCtx = null;
+function getCtx() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new Ctx();
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+function tone(ctx, freq, startAt, duration, peak) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, startAt);
+  gain.gain.linearRampToValueAtTime(peak, startAt + 0.02);
+  gain.gain.exponentialRampToValueAtTime(1e-4, startAt + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(startAt);
+  osc.stop(startAt + duration + 0.02);
+}
+function playReadyBell() {
+  try {
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    tone(ctx, 880, now, 0.32, 0.2);
+    tone(ctx, 659.25, now + 0.16, 0.42, 0.2);
+  } catch {
+  }
+}
+
+// js/useReadyAlerts.js
+function useReadyAlerts(orders, deviceRole) {
+  const prevStatusRef = useRef2({});
+  const [readyOrders, setReadyOrders] = useState2([]);
+  useEffect2(() => {
+    const prevStatus = prevStatusRef.current;
+    const nextStatus = {};
+    let justBecameReady = false;
+    for (const order of orders) {
+      nextStatus[order.id] = order.status;
+      const wasReady = prevStatus[order.id] === "ready";
+      if (order.status === "ready" && prevStatus[order.id] && !wasReady) {
+        justBecameReady = true;
+      }
+    }
+    prevStatusRef.current = nextStatus;
+    if (justBecameReady && deviceRole === "waiter") {
+      playReadyBell();
+    }
+    setReadyOrders(orders.filter((o) => o.status === "ready" && !o.paid));
+  }, [orders, deviceRole]);
+  return readyOrders;
 }
 
 // js/views/floorplan.jsx
@@ -610,8 +617,8 @@ function FloorPlanView({ setView }) {
 }
 
 // js/views/register.jsx
-import { useEffect as useEffect2, useMemo as useMemo2, useState as useState2 } from "react";
-import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt } from "lucide-react";
+import { useEffect as useEffect3, useMemo as useMemo2, useState as useState3 } from "react";
+import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt, ImageOff } from "lucide-react";
 
 // js/data.js
 var SAMPLE_ORDERS = [
@@ -652,8 +659,8 @@ function stockLabel(item) {
 }
 function RegisterView() {
   const { state, dispatch } = useStore();
-  const [activeCat, setActiveCat] = useState2(state.categories[0]);
-  const [query, setQuery] = useState2("");
+  const [activeCat, setActiveCat] = useState3(state.categories[0]);
+  const [query, setQuery] = useState3("");
   const order = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const table = state.tables.find((t) => t.id === order?.tableId);
   const items = useMemo2(() => {
@@ -750,6 +757,9 @@ function RegisterView() {
                   }
                 },
                 children: [
+                  m.image_url ? /* @__PURE__ */ jsxDEV("img", { src: m.image_url, alt: "", className: "mi-photo", onError: (e) => {
+                    e.target.style.display = "none";
+                  } }, void 0, false, {}, this) : /* @__PURE__ */ jsxDEV("span", { className: "mi-photo placeholder", children: /* @__PURE__ */ jsxDEV(ImageOff, { size: 20 }, void 0, false, {}, this) }, void 0, false, {}, this),
                   /* @__PURE__ */ jsxDEV("span", { className: "mi-name", children: m.name }, void 0, false, {
                     fileName: "<stdin>",
                     lineNumber: 82,
@@ -838,8 +848,8 @@ function TicketPanel({ order, canEdit }) {
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
   const canSend = items.length > 0 && order && order.status === "new";
-  const [noteDrafts, setNoteDrafts] = useState2({});
-  useEffect2(() => {
+  const [noteDrafts, setNoteDrafts] = useState3({});
+  useEffect3(() => {
     setNoteDrafts({});
   }, [order?.id]);
   const noteValue = (idx) => noteDrafts[idx] !== void 0 ? noteDrafts[idx] : items[idx]?.note || "";
@@ -1221,11 +1231,11 @@ function cap2(s) {
 }
 
 // js/views/kds.jsx
-import { useEffect as useEffect3, useState as useState3 } from "react";
+import { useEffect as useEffect4, useState as useState4 } from "react";
 import { ChefHat as ChefHat2, CookingPot, Check, X, Timer, StickyNote } from "lucide-react";
 function useNow() {
-  const [now, setNow] = useState3(() => Date.now());
-  useEffect3(() => {
+  const [now, setNow] = useState4(() => Date.now());
+  useEffect4(() => {
     const id = setInterval(() => setNow(Date.now()), 1e3);
     return () => clearInterval(id);
   }, []);
@@ -1444,11 +1454,11 @@ function KdsView() {
 }
 
 // js/views/bar.jsx
-import { useEffect as useEffect4, useState as useState4 } from "react";
+import { useEffect as useEffect5, useState as useState5 } from "react";
 import { Beer, CookingPot as CookingPot2, Check as Check2, X as X2, Timer as Timer2, StickyNote as StickyNote2 } from "lucide-react";
 function useNow2() {
-  const [now, setNow] = useState4(() => Date.now());
-  useEffect4(() => {
+  const [now, setNow] = useState5(() => Date.now());
+  useEffect5(() => {
     const id = setInterval(() => setNow(Date.now()), 1e3);
     return () => clearInterval(id);
   }, []);
@@ -1548,8 +1558,17 @@ function BarView() {
 }
 
 // js/views/settings.jsx
-import { useState as useState5 } from "react";
-import { Plus as Plus2, Trash2 as Trash22, User, Square, ChefHat as ChefHat3, Beer as Beer2 } from "lucide-react";
+import { useState as useState6 } from "react";
+import { Plus as Plus2, Trash2 as Trash22, User, Square, ChefHat as ChefHat3, Beer as Beer2, ImageOff as ImageOff2, Upload, Loader2 } from "lucide-react";
+var MENU_IMAGE_BUCKET = "menu-images";
+async function uploadMenuImage(file) {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error: uploadError } = await supabase.storage.from(MENU_IMAGE_BUCKET).upload(path, file, { cacheControl: "3600", upsert: false });
+  if (uploadError) throw uploadError;
+  const { data } = supabase.storage.from(MENU_IMAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
 function SettingsView() {
   return /* @__PURE__ */ jsxDEV("div", { className: "settings", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
@@ -1606,26 +1625,48 @@ function SettingsView() {
 }
 function MenuManager() {
   const { state, dispatch } = useStore();
-  const [name, setName] = useState5("");
-  const [category, setCategory] = useState5(state.categories[0]);
-  const [price, setPrice] = useState5("");
-  const [stock, setStock] = useState5("");
-  const [station, setStation] = useState5("kitchen");
-  const [editing, setEditing] = useState5(null);
+  const [name, setName] = useState6("");
+  const [category, setCategory] = useState6(state.categories[0]);
+  const [price, setPrice] = useState6("");
+  const [stock, setStock] = useState6("");
+  const [station, setStation] = useState6("kitchen");
+  const [imageUrl, setImageUrl] = useState6("");
+  const [uploading, setUploading] = useState6(false);
+  const [uploadError, setUploadError] = useState6("");
+  const [editing, setEditing] = useState6(null);
+  const handleFileChange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      const url = await uploadMenuImage(file);
+      setImageUrl(url);
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      setUploadError("Upload failed. Check the bucket is set up.");
+    } finally {
+      setUploading(false);
+    }
+  };
   const submit = () => {
     if (!name.trim()) return;
     const p = Math.max(0, parseFloat(price) || 0);
     const s = Math.max(0, parseInt(stock, 10) || 0);
+    const img = imageUrl.trim() || null;
     if (editing) {
-      dispatch({ type: "UPDATE_ITEM", id: editing, name: name.trim(), category, price: p, stock: s, station });
+      dispatch({ type: "UPDATE_ITEM", id: editing, name: name.trim(), category, price: p, stock: s, station, imageUrl: img });
     } else {
-      dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s, station });
+      dispatch({ type: "ADD_ITEM", name: name.trim(), category, price: p, stock: s, station, imageUrl: img });
     }
     setEditing(null);
     setName("");
     setPrice("");
     setStock("");
     setStation("kitchen");
+    setImageUrl("");
+    setUploadError("");
   };
   const startEdit = (item) => {
     setEditing(item.id);
@@ -1634,6 +1675,7 @@ function MenuManager() {
     setPrice(String(item.price));
     setStock(String(item.stock));
     setStation(item.station || "kitchen");
+    setImageUrl(item.image_url || "");
   };
   return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
     /* @__PURE__ */ jsxDEV("h2", { children: "Menu" }, void 0, false, {
@@ -1713,6 +1755,18 @@ function MenuManager() {
         lineNumber: 68,
         columnNumber: 9
       }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "form-row image-row", children: [
+        imageUrl ? /* @__PURE__ */ jsxDEV("img", { src: imageUrl, alt: "", className: "image-preview", onError: (e) => {
+          e.target.style.display = "none";
+        } }, void 0, false, {}, this) : /* @__PURE__ */ jsxDEV("span", { className: "image-preview placeholder", children: uploading ? /* @__PURE__ */ jsxDEV(Loader2, { size: 16, className: "spin" }, void 0, false, {}, this) : /* @__PURE__ */ jsxDEV(ImageOff2, { size: 16 }, void 0, false, {}, this) }, void 0, false, {}, this),
+        /* @__PURE__ */ jsxDEV("input", { placeholder: "Image URL (optional)", value: imageUrl, onChange: (e) => setImageUrl(e.target.value) }, void 0, false, {}, this),
+        /* @__PURE__ */ jsxDEV("label", { className: "btn ghost upload-btn", children: [
+          /* @__PURE__ */ jsxDEV(Upload, { size: 15 }, void 0, false, {}, this),
+          uploading ? "Uploading\u2026" : "Upload photo",
+          /* @__PURE__ */ jsxDEV("input", { type: "file", accept: "image/*", onChange: handleFileChange, disabled: uploading, style: { display: "none" } }, void 0, false, {}, this)
+        ] }, void 0, true, {}, this)
+      ] }, void 0, true, {}, this),
+      uploadError && /* @__PURE__ */ jsxDEV("p", { className: "upload-error", children: uploadError }, void 0, false, {}, this),
       /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
         /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: submit, children: [
           /* @__PURE__ */ jsxDEV(Plus2, { size: 16 }, void 0, false, {
@@ -1733,6 +1787,8 @@ function MenuManager() {
           setPrice("");
           setStock("");
           setStation("kitchen");
+          setImageUrl("");
+          setUploadError("");
         }, children: "Cancel" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 73,
@@ -1750,6 +1806,9 @@ function MenuManager() {
     }, this),
     /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: state.menu.map((m) => /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
       /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: [
+        m.image_url ? /* @__PURE__ */ jsxDEV("img", { src: m.image_url, alt: "", className: "pl-photo", onError: (e) => {
+          e.target.style.display = "none";
+        } }, void 0, false, {}, this) : /* @__PURE__ */ jsxDEV("span", { className: "pl-photo placeholder", children: /* @__PURE__ */ jsxDEV(ImageOff2, { size: 13 }, void 0, false, {}, this) }, void 0, false, {}, this),
         /* @__PURE__ */ jsxDEV("span", { className: "pl-name", children: m.name }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 81,
@@ -1835,7 +1894,7 @@ function stockBadgeInfo(stock) {
 }
 function StaffManager() {
   const { state, dispatch } = useStore();
-  const [name, setName] = useState5("");
+  const [name, setName] = useState6("");
   const add = () => {
     const n = name.trim();
     if (n && !state.staff.includes(n)) {
@@ -1925,9 +1984,9 @@ function StaffManager() {
 }
 function FloorManager() {
   const { state, dispatch } = useStore();
-  const [name, setName] = useState5("");
-  const [zone, setZone] = useState5("Main");
-  const [caps, setCaps] = useState5("4");
+  const [name, setName] = useState6("");
+  const [zone, setZone] = useState6("Main");
+  const [caps, setCaps] = useState6("4");
   const add = () => {
     const n = name.trim();
     if (n) {
@@ -2106,8 +2165,8 @@ var VIEWS = [
   { key: "settings", name: "Admin", icon: Printer2 }
 ];
 function useClock() {
-  const [now, setNow] = useState6(() => /* @__PURE__ */ new Date());
-  useEffect5(() => {
+  const [now, setNow] = useState7(() => /* @__PURE__ */ new Date());
+  useEffect6(() => {
     const id = setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
     return () => clearInterval(id);
   }, []);
@@ -2187,7 +2246,7 @@ function Header({ view, setView, theme, setTheme }) {
   const activeOrder = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const liveCount = Object.values(ordersByTable).filter((o) => o.items.length && o.status !== "new").length;
   const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const [role, setRole] = useState6(() => getDeviceRole());
+  const [role, setRole] = useState7(() => getDeviceRole());
   const handleRoleChange = (next) => {
     setDeviceRole(next);
     setRole(next);
@@ -2318,8 +2377,8 @@ function cap3(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function Shell() {
-  const [view, setView] = useState6("floorplan");
-  const [theme, setTheme] = useState6(
+  const [view, setView] = useState7("floorplan");
+  const [theme, setTheme] = useState7(
     () => document.documentElement.getAttribute("data-theme") || "dark"
   );
   return /* @__PURE__ */ jsxDEV("div", { className: "app", children: [
