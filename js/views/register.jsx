@@ -1,6 +1,6 @@
 import { Fragment, jsxDEV } from "react/jsx-dev-runtime";
 import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt, ImageOff } from "lucide-react";
 import { useStore } from "./../store.js";
 import { TAX_RATE } from "./../data.js";
 function stockLabel(item) {
@@ -108,6 +108,9 @@ function RegisterView() {
                   }
                 },
                 children: [
+                  m.image_url ? /* @__PURE__ */ jsxDEV("img", { src: m.image_url, alt: "", className: "mi-photo", onError: (e) => {
+                    e.target.style.display = "none";
+                  } }, void 0, false, {}, this) : /* @__PURE__ */ jsxDEV("span", { className: "mi-photo placeholder", children: /* @__PURE__ */ jsxDEV(ImageOff, { size: 20 }, void 0, false, {}, this) }, void 0, false, {}, this),
                   /* @__PURE__ */ jsxDEV("span", { className: "mi-name", children: m.name }, void 0, false, {
                     fileName: "<stdin>",
                     lineNumber: 82,
