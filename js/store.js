@@ -169,6 +169,7 @@ async function runAction(action, state) {
         price: action.price,
         stock: action.stock,
         station: action.station || "kitchen",
+        image_url: action.imageUrl || null,
       });
       return;
 
@@ -181,6 +182,7 @@ async function runAction(action, state) {
           price: action.price,
           stock: action.stock,
           station: action.station || "kitchen",
+          image_url: action.imageUrl || null,
         })
         .eq("id", action.id);
       return;
