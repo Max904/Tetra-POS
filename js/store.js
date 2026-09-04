@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { supabase } from "./supabaseClient.js";
+import { supabase, deleteMenuImageByUrl } from "./supabaseClient.js";
 
 const LOW_STOCK = 5;
 
@@ -187,9 +187,18 @@ async function runAction(action, state) {
         .eq("id", action.id);
       return;
 
-    case "DELETE_ITEM":
+    case "DELETE_ITEM": {
+      const item = state.menu.find((m) => m.id === action.id);
       await supabase.from("menu_items").delete().eq("id", action.id);
+      // Clean up the orphaned photo in Storage — but only if no other menu
+      // item still points at the same URL (can happen if someone pasted the
+      // same external link into two items).
+      const stillUsed = state.menu.some((m) => m.id !== action.id && m.image_url === item?.image_url);
+      if (item?.image_url && !stillUsed) {
+        await deleteMenuImageByUrl(item.image_url);
+      }
       return;
+    }
 
     case "ADD_TABLE":
       await supabase.from("tables").insert({
