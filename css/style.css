@@ -511,6 +511,21 @@ select:focus {
   opacity: 0.55;
   cursor: not-allowed;
 }
+.mi-photo {
+  width: 100%;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--panel-2);
+  display: block;
+}
+.mi-photo.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+}
 .mi-name {
   font-weight: 700;
   font-size: 15px;
@@ -967,6 +982,42 @@ html[data-theme="light"] .kds-card.over {
 .form-row .btn {
   padding: 10px 16px;
 }
+.image-row {
+  align-items: center;
+}
+.image-preview {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: none;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.image-preview.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.upload-error {
+  margin: -4px 0 4px;
+  font-size: 12.5px;
+  color: var(--red);
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 .station-label {
   display: flex;
   align-items: center;
@@ -1042,6 +1093,21 @@ html[data-theme="light"] .kds-card.over {
   gap: 8px;
   flex: 1;
   min-width: 0;
+}
+.pl-photo {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex: none;
+  background: var(--panel);
+}
+.pl-photo.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border: 1px dashed var(--border);
 }
 .pl-name {
   font-weight: 600;
