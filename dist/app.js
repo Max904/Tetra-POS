@@ -71,7 +71,8 @@ var EMPTY_STATE = {
   tables: [],
   orders: [],
   currentStaff: "",
-  activeOrderId: null
+  activeOrderId: null,
+  timerStartMode: "sent"
 };
 async function fetchAll() {
   const [
@@ -137,6 +138,8 @@ async function fetchAll() {
       barStatus,
       kitchenServedAt: o.kitchen_served_at ? new Date(o.kitchen_served_at).getTime() : null,
       barServedAt: o.bar_served_at ? new Date(o.bar_served_at).getTime() : null,
+      kitchenStartedAt: o.kitchen_started_at ? new Date(o.kitchen_started_at).getTime() : null,
+      barStartedAt: o.bar_started_at ? new Date(o.bar_started_at).getTime() : null,
       kitchenDismissed: !!o.kitchen_dismissed,
       barDismissed: !!o.bar_dismissed,
       status,
@@ -153,13 +156,17 @@ async function fetchAll() {
     tables: tableRows || [],
     orders,
     currentStaff: appRow.current_staff || staffNames[0] || "",
-    activeOrderId: appRow.active_order_id || null
+    activeOrderId: appRow.active_order_id || null,
+    timerStartMode: appRow.timer_start_mode || "sent"
   };
 }
 async function runAction(action, state) {
   switch (action.type) {
     case "SET_STAFF":
       await supabase.from("app_state").update({ current_staff: action.name }).eq("id", 1);
+      return;
+    case "SET_TIMER_MODE":
+      await supabase.from("app_state").update({ timer_start_mode: action.mode }).eq("id", 1);
       return;
     case "ADD_STAFF":
       await supabase.from("staff").insert({ name: action.name });
@@ -306,12 +313,19 @@ async function runAction(action, state) {
     }
     case "SET_KITCHEN": {
       const station = action.station === "bar" ? "bar" : "kitchen";
+      const order = state.orders.find((o) => o.id === action.orderId);
       const patch = {};
       if (station === "bar") {
         patch.bar_status = action.status;
+        if (action.status === "preparing" && !order?.barStartedAt) {
+          patch.bar_started_at = (/* @__PURE__ */ new Date()).toISOString();
+        }
         if (action.status === "served") patch.bar_served_at = (/* @__PURE__ */ new Date()).toISOString();
       } else {
         patch.kitchen_status = action.status;
+        if (action.status === "preparing" && !order?.kitchenStartedAt) {
+          patch.kitchen_started_at = (/* @__PURE__ */ new Date()).toISOString();
+        }
         if (action.status === "served") patch.kitchen_served_at = (/* @__PURE__ */ new Date()).toISOString();
       }
       await supabase.from("orders").update(patch).eq("id", action.orderId);
@@ -1327,7 +1341,7 @@ function KdsView() {
       lineNumber: 40,
       columnNumber: 9
     }, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
-      const startedAt = o.sentAt || o.createdAt;
+      const startedAt = state.timerStartMode === "preparing" ? o.kitchenStartedAt || o.sentAt || o.createdAt : o.sentAt || o.createdAt;
       const endedAt = o.kitchenServedAt || now;
       const elapsed = endedAt - startedAt;
       const red = o.kitchenStatus !== "served" && elapsed > 15 * 60 * 1e3;
@@ -1528,7 +1542,7 @@ function BarView() {
       /* @__PURE__ */ jsxDEV(Beer, { size: 40 }, void 0, false, {}, this),
       /* @__PURE__ */ jsxDEV("p", { children: "All caught up \u2014 no active drink tickets." }, void 0, false, {}, this)
     ] }, void 0, true, {}, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
-      const startedAt = o.sentAt || o.createdAt;
+      const startedAt = state.timerStartMode === "preparing" ? o.barStartedAt || o.sentAt || o.createdAt : o.sentAt || o.createdAt;
       const endedAt = o.barServedAt || now;
       const elapsed = endedAt - startedAt;
       const red = o.barStatus !== "served" && elapsed > 15 * 60 * 1e3;
@@ -1584,7 +1598,7 @@ function BarView() {
 
 // js/views/settings.jsx
 import { useState as useState6 } from "react";
-import { Plus as Plus2, Trash2 as Trash22, User, Square, ChefHat as ChefHat3, Beer as Beer2, ImageOff as ImageOff2, Upload, Loader2 } from "lucide-react";
+import { Plus as Plus2, Trash2 as Trash22, User, Square, ChefHat as ChefHat3, Beer as Beer2, ImageOff as ImageOff2, Upload, Loader2, Timer as Timer3, Send } from "lucide-react";
 async function uploadMenuImage(file) {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -1635,7 +1649,8 @@ function SettingsView() {
         fileName: "<stdin>",
         lineNumber: 18,
         columnNumber: 9
-      }, this)
+      }, this),
+      /* @__PURE__ */ jsxDEV(TimerSettings, {}, void 0, false, {}, this)
     ] }, void 0, true, {
       fileName: "<stdin>",
       lineNumber: 14,
@@ -1919,6 +1934,28 @@ function MenuManager() {
     lineNumber: 56,
     columnNumber: 5
   }, this);
+}
+function TimerSettings() {
+  const { state, dispatch } = useStore();
+  const mode = state.timerStartMode || "sent";
+  const setMode = (m) => {
+    if (m !== mode) dispatch({ type: "SET_TIMER_MODE", mode: m });
+  };
+  return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV("h2", { children: "Ticket Timer" }, void 0, false, {}, this),
+    /* @__PURE__ */ jsxDEV("p", { className: "hint", children: "Choose when the Kitchen/Bar timer starts counting for a ticket." }, void 0, false, {}, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "form", children: /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: /* @__PURE__ */ jsxDEV("div", { className: "station-toggle", role: "group", "aria-label": "Timer start", children: [
+      /* @__PURE__ */ jsxDEV("button", { type: "button", className: `station-btn ${mode === "sent" ? "active" : ""}`, onClick: () => setMode("sent"), children: [
+        /* @__PURE__ */ jsxDEV(Send, { size: 15 }, void 0, false, {}, this),
+        " When garz\xF3n env\xEDa"
+      ] }, void 0, true, {}, this),
+      /* @__PURE__ */ jsxDEV("button", { type: "button", className: `station-btn ${mode === "preparing" ? "active" : ""}`, onClick: () => setMode("preparing"), children: [
+        /* @__PURE__ */ jsxDEV(Timer3, { size: 15 }, void 0, false, {}, this),
+        " When cocina marca \u201Cen preparaci\xF3n\u201D"
+      ] }, void 0, true, {}, this)
+    ] }, void 0, true, {}, this) }, void 0, false, {}, this) }, void 0, false, {}, this),
+    /* @__PURE__ */ jsxDEV("p", { className: "hint", children: mode === "sent" ? "El cron\xF3metro parte apenas se manda la comanda a cocina/bar." : "El cron\xF3metro parte cuando esa estaci\xF3n marca la comanda como \u201Cen preparaci\xF3n\u201D (tickets ya en \u201Cenviado\u201D usan la hora de env\xEDo mientras tanto)." }, void 0, false, {}, this)
+  ] }, void 0, true, {}, this);
 }
 function stockBadge(stock) {
   if (stock <= 0) return "out";
