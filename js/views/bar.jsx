@@ -49,7 +49,10 @@ function BarView() {
       /* @__PURE__ */ jsxDEV(Beer, { size: 40 }, void 0, false, {}, this),
       /* @__PURE__ */ jsxDEV("p", { children: "All caught up \u2014 no active drink tickets." }, void 0, false, {}, this)
     ] }, void 0, true, {}, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
-      const startedAt = o.sentAt || o.createdAt;
+      // See kds.jsx for why this branches on timerStartMode.
+      const startedAt = state.timerStartMode === "preparing"
+        ? o.barStartedAt || o.sentAt || o.createdAt
+        : o.sentAt || o.createdAt;
       const endedAt = o.barServedAt || now;
       const elapsed = endedAt - startedAt;
       const red = o.barStatus !== "served" && elapsed > 15 * 60 * 1e3;
