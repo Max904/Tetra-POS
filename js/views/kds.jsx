@@ -71,7 +71,13 @@ function KdsView() {
       lineNumber: 40,
       columnNumber: 9
     }, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
-      const startedAt = o.sentAt || o.createdAt;
+      // "preparing" mode times the ticket from when the kitchen actually
+      // started it; falls back to sentAt if that hasn't happened yet (e.g.
+      // an order still sitting in "sent"). "sent" mode (default) always
+      // times from when the waiter fired it to the kitchen.
+      const startedAt = state.timerStartMode === "preparing"
+        ? o.kitchenStartedAt || o.sentAt || o.createdAt
+        : o.sentAt || o.createdAt;
       const endedAt = o.kitchenServedAt || now;
       const elapsed = endedAt - startedAt;
       const red = o.kitchenStatus !== "served" && elapsed > 15 * 60 * 1e3;
