@@ -1341,10 +1341,12 @@ function KdsView() {
       lineNumber: 40,
       columnNumber: 9
     }, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
-      const startedAt = state.timerStartMode === "preparing" ? o.kitchenStartedAt || o.sentAt || o.createdAt : o.sentAt || o.createdAt;
+      const usesPrepStart = state.timerStartMode === "preparing";
+      const timerStarted = !usesPrepStart || !!o.kitchenStartedAt;
+      const startedAt = usesPrepStart ? o.kitchenStartedAt || now : o.sentAt || o.createdAt;
       const endedAt = o.kitchenServedAt || now;
-      const elapsed = endedAt - startedAt;
-      const red = o.kitchenStatus !== "served" && elapsed > 15 * 60 * 1e3;
+      const elapsed = timerStarted ? endedAt - startedAt : 0;
+      const red = timerStarted && o.kitchenStatus !== "served" && elapsed > 15 * 60 * 1e3;
       return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.kitchenStatus} ${red ? "over" : ""}`, children: [
         /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
           /* @__PURE__ */ jsxDEV("div", { children: [
@@ -1542,10 +1544,12 @@ function BarView() {
       /* @__PURE__ */ jsxDEV(Beer, { size: 40 }, void 0, false, {}, this),
       /* @__PURE__ */ jsxDEV("p", { children: "All caught up \u2014 no active drink tickets." }, void 0, false, {}, this)
     ] }, void 0, true, {}, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
-      const startedAt = state.timerStartMode === "preparing" ? o.barStartedAt || o.sentAt || o.createdAt : o.sentAt || o.createdAt;
+      const usesPrepStart = state.timerStartMode === "preparing";
+      const timerStarted = !usesPrepStart || !!o.barStartedAt;
+      const startedAt = usesPrepStart ? o.barStartedAt || now : o.sentAt || o.createdAt;
       const endedAt = o.barServedAt || now;
-      const elapsed = endedAt - startedAt;
-      const red = o.barStatus !== "served" && elapsed > 15 * 60 * 1e3;
+      const elapsed = timerStarted ? endedAt - startedAt : 0;
+      const red = timerStarted && o.barStatus !== "served" && elapsed > 15 * 60 * 1e3;
       return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.barStatus} ${red ? "over" : ""}`, children: [
         /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
           /* @__PURE__ */ jsxDEV("div", { children: [
