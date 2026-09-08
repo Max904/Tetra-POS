@@ -19,6 +19,7 @@ const EMPTY_STATE = {
   orders: [],
   currentStaff: "",
   activeOrderId: null,
+  timerStartMode: "sent",
 };
 
 // ---------- fetch + shape everything into the state object the views expect ----------
@@ -97,6 +98,8 @@ async function fetchAll() {
       barStatus,
       kitchenServedAt: o.kitchen_served_at ? new Date(o.kitchen_served_at).getTime() : null,
       barServedAt: o.bar_served_at ? new Date(o.bar_served_at).getTime() : null,
+      kitchenStartedAt: o.kitchen_started_at ? new Date(o.kitchen_started_at).getTime() : null,
+      barStartedAt: o.bar_started_at ? new Date(o.bar_started_at).getTime() : null,
       kitchenDismissed: !!o.kitchen_dismissed,
       barDismissed: !!o.bar_dismissed,
       status,
@@ -116,6 +119,10 @@ async function fetchAll() {
     orders,
     currentStaff: appRow.current_staff || staffNames[0] || "",
     activeOrderId: appRow.active_order_id || null,
+    // "sent": ticket timers start the moment the waiter sends the order.
+    // "preparing": ticket timers start once that station actually marks the
+    // ticket as preparing (kitchen_started_at / bar_started_at below).
+    timerStartMode: appRow.timer_start_mode || "sent",
   };
 }
 
@@ -127,6 +134,10 @@ async function runAction(action, state) {
   switch (action.type) {
     case "SET_STAFF":
       await supabase.from("app_state").update({ current_staff: action.name }).eq("id", 1);
+      return;
+
+    case "SET_TIMER_MODE":
+      await supabase.from("app_state").update({ timer_start_mode: action.mode }).eq("id", 1);
       return;
 
     case "ADD_STAFF":
@@ -320,12 +331,21 @@ async function runAction(action, state) {
 
     case "SET_KITCHEN": {
       const station = action.station === "bar" ? "bar" : "kitchen";
+      const order = state.orders.find((o) => o.id === action.orderId);
       const patch = {};
       if (station === "bar") {
         patch.bar_status = action.status;
+        // Only stamp this the first time the ticket enters "preparing" —
+        // it's what the "preparing" timer-start mode measures from.
+        if (action.status === "preparing" && !order?.barStartedAt) {
+          patch.bar_started_at = new Date().toISOString();
+        }
         if (action.status === "served") patch.bar_served_at = new Date().toISOString();
       } else {
         patch.kitchen_status = action.status;
+        if (action.status === "preparing" && !order?.kitchenStartedAt) {
+          patch.kitchen_started_at = new Date().toISOString();
+        }
         if (action.status === "served") patch.kitchen_served_at = new Date().toISOString();
       }
       await supabase.from("orders").update(patch).eq("id", action.orderId);
