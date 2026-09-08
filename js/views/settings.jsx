@@ -1,6 +1,6 @@
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { useState } from "react";
-import { Plus, Trash2, User, Square, ChefHat, Beer, ImageOff, Upload, Loader2 } from "lucide-react";
+import { Plus, Trash2, User, Square, ChefHat, Beer, ImageOff, Upload, Loader2, Timer, Send } from "lucide-react";
 import { useStore, LOW_STOCK } from "./../store.js";
 import { supabase, MENU_IMAGE_BUCKET, deleteMenuImagePath, deleteMenuImageByUrl } from "./../supabaseClient.js";
 
@@ -56,7 +56,8 @@ function SettingsView() {
         fileName: "<stdin>",
         lineNumber: 18,
         columnNumber: 9
-      }, this)
+      }, this),
+      /* @__PURE__ */ jsxDEV(TimerSettings, {}, void 0, false, {}, this)
     ] }, void 0, true, {
       fileName: "<stdin>",
       lineNumber: 14,
@@ -355,6 +356,28 @@ function MenuManager() {
     lineNumber: 56,
     columnNumber: 5
   }, this);
+}
+function TimerSettings() {
+  const { state, dispatch } = useStore();
+  const mode = state.timerStartMode || "sent";
+  const setMode = (m) => {
+    if (m !== mode) dispatch({ type: "SET_TIMER_MODE", mode: m });
+  };
+  return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
+    /* @__PURE__ */ jsxDEV("h2", { children: "Ticket Timer" }, void 0, false, {}, this),
+    /* @__PURE__ */ jsxDEV("p", { className: "hint", children: "Choose when the Kitchen/Bar timer starts counting for a ticket." }, void 0, false, {}, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "form", children: /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: /* @__PURE__ */ jsxDEV("div", { className: "station-toggle", role: "group", "aria-label": "Timer start", children: [
+      /* @__PURE__ */ jsxDEV("button", { type: "button", className: `station-btn ${mode === "sent" ? "active" : ""}`, onClick: () => setMode("sent"), children: [
+        /* @__PURE__ */ jsxDEV(Send, { size: 15 }, void 0, false, {}, this),
+        " When garzón envía"
+      ] }, void 0, true, {}, this),
+      /* @__PURE__ */ jsxDEV("button", { type: "button", className: `station-btn ${mode === "preparing" ? "active" : ""}`, onClick: () => setMode("preparing"), children: [
+        /* @__PURE__ */ jsxDEV(Timer, { size: 15 }, void 0, false, {}, this),
+        " When cocina marca \u201Cen preparaci\xF3n\u201D"
+      ] }, void 0, true, {}, this)
+    ] }, void 0, true, {}, this) }, void 0, false, {}, this) }, void 0, false, {}, this),
+    /* @__PURE__ */ jsxDEV("p", { className: "hint", children: mode === "sent" ? "El cron\xF3metro parte apenas se manda la comanda a cocina/bar." : "El cron\xF3metro parte cuando esa estaci\xF3n marca la comanda como \u201Cen preparaci\xF3n\u201D (tickets ya en \u201Cenviado\u201D usan la hora de env\xEDo mientras tanto)." }, void 0, false, {}, this)
+  ] }, void 0, true, {}, this);
 }
 function stockBadge(stock) {
   if (stock <= 0) return "out";
