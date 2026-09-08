@@ -72,15 +72,17 @@ function KdsView() {
       columnNumber: 9
     }, this) : /* @__PURE__ */ jsxDEV("div", { className: "kds-grid", children: orders.map((o) => {
       // "preparing" mode times the ticket from when the kitchen actually
-      // started it; falls back to sentAt if that hasn't happened yet (e.g.
-      // an order still sitting in "sent"). "sent" mode (default) always
-      // times from when the waiter fired it to the kitchen.
-      const startedAt = state.timerStartMode === "preparing"
-        ? o.kitchenStartedAt || o.sentAt || o.createdAt
-        : o.sentAt || o.createdAt;
+      // marked it as preparing. Until that happens (ticket still just
+      // "sent"), the clock stays at 0 instead of quietly running off
+      // sentAt — otherwise it looks like it "resets" the moment someone
+      // taps Preparing. "sent" mode (default) always times from when the
+      // waiter fired the order to the kitchen.
+      const usesPrepStart = state.timerStartMode === "preparing";
+      const timerStarted = !usesPrepStart || !!o.kitchenStartedAt;
+      const startedAt = usesPrepStart ? o.kitchenStartedAt || now : o.sentAt || o.createdAt;
       const endedAt = o.kitchenServedAt || now;
-      const elapsed = endedAt - startedAt;
-      const red = o.kitchenStatus !== "served" && elapsed > 15 * 60 * 1e3;
+      const elapsed = timerStarted ? endedAt - startedAt : 0;
+      const red = timerStarted && o.kitchenStatus !== "served" && elapsed > 15 * 60 * 1e3;
       return /* @__PURE__ */ jsxDEV("article", { className: `ticket-card ${o.kitchenStatus} ${red ? "over" : ""}`, children: [
         /* @__PURE__ */ jsxDEV("header", { className: "k-head", children: [
           /* @__PURE__ */ jsxDEV("div", { children: [
