@@ -547,24 +547,34 @@ async function runAction(action, state) {
     }
 
     case "DISMISS_ORDER": {
-      const order = state.orders.find((o) => o.id === action.orderId);
       const station = action.station === "bar" ? "bar" : "kitchen";
       const patch = station === "bar" ? { bar_dismissed: true } : { kitchen_dismissed: true };
-      await supabase.from("orders").update(patch).eq("id", action.orderId);
 
-      // Only wipe the order (and its items) once every station that had
-      // items on it has been dismissed — otherwise dismissing from one
-      // station would yank the ticket out from under the other one.
-      if (order) {
-        const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
-        const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
-        const kitchenDone = !kitchenApplies || order.kitchenDismissed || station === "kitchen";
-        const barDone = !barApplies || order.barDismissed || station === "bar";
-        if (kitchenDone && barDone) {
-          await supabase.from("orders").delete().eq("id", action.orderId);
-          if (state.activeOrderId === action.orderId) {
-            await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
-          }
+      // Read back the row we just patched instead of trusting this device's
+      // local cache. Kitchen and Bar are normally separate tablets, each
+      // syncing over realtime — if both are dismissed within the same
+      // second, whichever device is second may not have heard about the
+      // first device's dismiss yet. Deciding from a fresh DB read (rather
+      // than `order.kitchenDismissed`/`barDismissed` from local state)
+      // means the two devices can never both think "the other one isn't
+      // done yet" and leave the order stuck forever.
+      const { data: updated, error } = await supabase
+        .from("orders")
+        .update(patch)
+        .eq("id", action.orderId)
+        .select()
+        .single();
+      if (error || !updated) return;
+
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const kitchenApplies = order ? order.items.some((it) => stationOf(state, it.menuId) === "kitchen") : true;
+      const barApplies = order ? order.items.some((it) => stationOf(state, it.menuId) === "bar") : true;
+      const kitchenDone = !kitchenApplies || !!updated.kitchen_dismissed;
+      const barDone = !barApplies || !!updated.bar_dismissed;
+      if (kitchenDone && barDone) {
+        await supabase.from("orders").delete().eq("id", action.orderId);
+        if (state.activeOrderId === action.orderId) {
+          await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
         }
       }
       return;
