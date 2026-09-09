@@ -253,10 +253,7 @@ function TicketPanel({ order, canEdit }) {
   return /* @__PURE__ */ jsxDEV("aside", { className: "ticket", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "ticket-head", children: [
       /* @__PURE__ */ jsxDEV("div", { children: [
-        /* @__PURE__ */ jsxDEV("h2", { children: [
-          "Table ",
-          order.tableId.slice(1)
-        ] }, void 0, true, {
+        /* @__PURE__ */ jsxDEV("h2", { children: table?.name || "Table" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 131,
           columnNumber: 11
