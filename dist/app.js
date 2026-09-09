@@ -882,6 +882,7 @@ function RegisterView() {
 }
 function TicketPanel({ order, canEdit }) {
   const { state, dispatch } = useStore();
+  const table = state.tables.find((t) => t.id === order?.tableId);
   const items = order?.items || [];
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
   const tax = subtotal * TAX_RATE;
