@@ -41,7 +41,7 @@ async function fetchAll() {
     { data: categoryRows, error: e7 },
   ] = await Promise.all([
     supabase.from("staff").select("*").order("name"),
-    supabase.from("menu_items").select("*"),
+    supabase.from("menu_items").select("*").order("name"),
     supabase.from("tables").select("*"),
     supabase.from("orders").select("*").order("created_at"),
     supabase.from("order_items").select("*"),
