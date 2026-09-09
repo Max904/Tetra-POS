@@ -63,6 +63,7 @@ async function deleteMenuImageByUrl(url) {
 }
 
 // js/store.js
+import { jsx as jsx2 } from "react/jsx-runtime";
 var LOW_STOCK = 5;
 var EMPTY_STATE = {
   staff: [],
@@ -74,6 +75,10 @@ var EMPTY_STATE = {
   activeOrderId: null,
   timerStartMode: "sent"
 };
+var STAGE_RANK = { sent: 0, preparing: 1, ready: 2, served: 3 };
+function stationOf(state, menuId) {
+  return state.menu.find((m) => m.id === menuId)?.station || "kitchen";
+}
 async function fetchAll() {
   const [
     { data: staffRows, error: e1 },
@@ -111,7 +116,6 @@ async function fetchAll() {
   for (const m of menuRows || []) {
     stationById[m.id] = m.station || "kitchen";
   }
-  const STAGE_RANK = { sent: 0, preparing: 1, ready: 2, served: 3 };
   const orders = (orderRows || []).map((o) => {
     const items = itemsByOrder[o.id] || [];
     const kitchenApplies = items.some((it) => (stationById[it.menuId] || "kitchen") === "kitchen");
@@ -157,19 +161,21 @@ async function fetchAll() {
     orders,
     currentStaff: appRow.current_staff || staffNames[0] || "",
     activeOrderId: appRow.active_order_id || null,
+    // "sent": ticket timers start the moment the waiter sends the order.
+    // "preparing": ticket timers start once that station actually marks the
+    // ticket as preparing (kitchen_started_at / bar_started_at below).
     timerStartMode: appRow.timer_start_mode || "sent"
   };
 }
 function recomputeStatus(state, order) {
   if (order.status === "new" || order.status === "paid") return order.status;
-  const STAGE_RANK2 = { sent: 0, preparing: 1, ready: 2, served: 3 };
   const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
   const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
   const active = [];
   if (kitchenApplies) active.push(order.kitchenStatus);
   if (barApplies) active.push(order.barStatus);
   if (!active.length) return order.status;
-  return active.reduce((worst, s) => STAGE_RANK2[s] < STAGE_RANK2[worst] ? s : worst);
+  return active.reduce((worst, s) => STAGE_RANK[s] < STAGE_RANK[worst] ? s : worst);
 }
 function withOrder(state, orderId, patch) {
   return {
@@ -283,7 +289,11 @@ function applyOptimistic(state, action) {
       const order = state.orders.find((o) => o.id === action.orderId);
       if (!order) return state;
       const station = action.station === "bar" ? "bar" : "kitchen";
-      let next = withOrder(state, action.orderId, station === "bar" ? { barDismissed: true } : { kitchenDismissed: true });
+      let next = withOrder(
+        state,
+        action.orderId,
+        station === "bar" ? { barDismissed: true } : { kitchenDismissed: true }
+      );
       const updated = next.orders.find((o) => o.id === action.orderId);
       const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
       const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
@@ -295,6 +305,9 @@ function applyOptimistic(state, action) {
       }
       return next;
     }
+    // Menu/table/category admin edits (Settings screen) are infrequent and
+    // not where the lag was reported, so they still wait for the realtime
+    // refresh to reflect on screen.
     default:
       return state;
   }
@@ -484,7 +497,7 @@ async function runAction(action, state) {
       const station = action.station === "bar" ? "bar" : "kitchen";
       const patch = station === "bar" ? { bar_dismissed: true } : { kitchen_dismissed: true };
       const { data: updated, error } = await supabase.from("orders").update(patch).eq("id", action.orderId).select().single();
-      if (error || !updated) throw error || new Error("DISMISS_ORDER: order not found");
+      if (error || !updated) return;
       const order = state.orders.find((o) => o.id === action.orderId);
       const kitchenApplies = order ? order.items.some((it) => stationOf(state, it.menuId) === "kitchen") : true;
       const barApplies = order ? order.items.some((it) => stationOf(state, it.menuId) === "bar") : true;
@@ -531,23 +544,22 @@ function StoreProvider({ children }) {
       supabase.removeChannel(channel);
     };
   }, [refreshNow, scheduleRefresh]);
-  const dispatch = useCallback((action) => {
-    const current = stateRef.current;
-    const act = action.type === "OPEN_ORDER" && !action.id ? { ...action, id: `o${Date.now()}` } : action;
-    const optimistic = applyOptimistic(current, act);
-    stateRef.current = optimistic;
-    setState(optimistic);
-    runAction(act, current).catch((err) => {
-      console.error("Supabase write failed:", act.type, err);
-      refreshNow();
-    });
-  }, [refreshNow]);
+  const dispatch = useCallback(
+    (action) => {
+      const current = stateRef.current;
+      const act = action.type === "OPEN_ORDER" && !action.id ? { ...action, id: `o${Date.now()}` } : action;
+      const optimistic = applyOptimistic(current, act);
+      stateRef.current = optimistic;
+      setState(optimistic);
+      runAction(act, current).catch((err) => {
+        console.error("Supabase write failed:", act.type, err);
+        refreshNow();
+      });
+    },
+    [refreshNow]
+  );
   const api = useMemo(() => ({ state, dispatch }), [state]);
-  return /* @__PURE__ */ jsxDEV(StoreContext.Provider, { value: api, children }, void 0, false, {
-    fileName: "js/store.js",
-    lineNumber: 430,
-    columnNumber: 10
-  }, this);
+  return /* @__PURE__ */ jsx2(StoreContext.Provider, { value: api, children });
 }
 function useStore() {
   return useContext(StoreContext);
@@ -561,9 +573,6 @@ function useOrdersByTable(state) {
     }
   }
   return activeByTable;
-}
-function stationOf(state, menuId) {
-  return state.menu.find((m) => m.id === menuId)?.station || "kitchen";
 }
 function useKitchenOrders(state) {
   return state.orders.filter((o) => !o.paid && o.status !== "new" && o.status !== "paid" && !o.kitchenDismissed).map((o) => ({
@@ -642,19 +651,27 @@ function useReadyAlerts(orders, deviceRole) {
   useEffect2(() => {
     const prevStatus = prevStatusRef.current;
     const nextStatus = {};
-    let justBecameReady = false;
+    let ringCount = 0;
     for (const order of orders) {
-      nextStatus[order.id] = order.status;
-      const wasReady = prevStatus[order.id] === "ready";
-      if (order.status === "ready" && prevStatus[order.id] && !wasReady) {
-        justBecameReady = true;
+      const prevKitchen = prevStatus[order.id]?.kitchen;
+      const prevBar = prevStatus[order.id]?.bar;
+      nextStatus[order.id] = { kitchen: order.kitchenStatus, bar: order.barStatus };
+      if (order.kitchenStatus === "ready" && prevKitchen && prevKitchen !== "ready") {
+        ringCount += 1;
+      }
+      if (order.barStatus === "ready" && prevBar && prevBar !== "ready") {
+        ringCount += 1;
       }
     }
     prevStatusRef.current = nextStatus;
-    if (justBecameReady && deviceRole === "waiter") {
-      playReadyBell();
+    if (ringCount && deviceRole === "waiter") {
+      for (let i = 0; i < ringCount; i++) {
+        setTimeout(() => playReadyBell(), i * 650);
+      }
     }
-    setReadyOrders(orders.filter((o) => o.status === "ready" && !o.paid));
+    setReadyOrders(
+      orders.filter((o) => !o.paid && (o.kitchenStatus === "ready" || o.barStatus === "ready"))
+    );
   }, [orders, deviceRole]);
   return readyOrders;
 }
@@ -857,7 +874,6 @@ function RegisterView() {
     );
   }, [state.menu, activeCat, query]);
   const menuInStock = state.menu.filter((m) => m.category === activeCat && m.stock > 0);
-  void menuInStock;
   const canEdit = !!order && order.status === "new";
   const subtitle = order ? `${table?.name || "Unassigned"} \xB7 taken by ${order.staff}` : "Select a table from the Floor Plan to start";
   return /* @__PURE__ */ jsxDEV("div", { className: "register", children: [
