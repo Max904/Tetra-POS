@@ -160,6 +160,145 @@ async function fetchAll() {
     timerStartMode: appRow.timer_start_mode || "sent"
   };
 }
+function recomputeStatus(state, order) {
+  if (order.status === "new" || order.status === "paid") return order.status;
+  const STAGE_RANK2 = { sent: 0, preparing: 1, ready: 2, served: 3 };
+  const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
+  const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
+  const active = [];
+  if (kitchenApplies) active.push(order.kitchenStatus);
+  if (barApplies) active.push(order.barStatus);
+  if (!active.length) return order.status;
+  return active.reduce((worst, s) => STAGE_RANK2[s] < STAGE_RANK2[worst] ? s : worst);
+}
+function withOrder(state, orderId, patch) {
+  return {
+    ...state,
+    orders: state.orders.map((o) => {
+      if (o.id !== orderId) return o;
+      const next = typeof patch === "function" ? patch(o) : { ...o, ...patch };
+      return { ...next, status: recomputeStatus(state, next) };
+    })
+  };
+}
+function applyOptimistic(state, action) {
+  switch (action.type) {
+    case "SET_STAFF":
+      return { ...state, currentStaff: action.name };
+    case "SET_TIMER_MODE":
+      return { ...state, timerStartMode: action.mode };
+    case "ADD_STAFF":
+      return state.staff.includes(action.name) ? state : { ...state, staff: [...state.staff, action.name] };
+    case "REMOVE_STAFF": {
+      if (state.staff.length <= 1) return state;
+      const staff = state.staff.filter((s) => s !== action.name);
+      const currentStaff = state.currentStaff === action.name ? staff[0] || "" : state.currentStaff;
+      return { ...state, staff, currentStaff };
+    }
+    case "OPEN_ORDER": {
+      const newOrder = {
+        id: action.id,
+        tableId: action.tableId,
+        staff: state.currentStaff,
+        items: [],
+        createdAt: Date.now(),
+        sentAt: null,
+        kitchenStatus: "sent",
+        barStatus: "sent",
+        kitchenServedAt: null,
+        barServedAt: null,
+        kitchenStartedAt: null,
+        barStartedAt: null,
+        kitchenDismissed: false,
+        barDismissed: false,
+        status: "new",
+        billRequested: false,
+        paid: false
+      };
+      return { ...state, orders: [...state.orders, newOrder], activeOrderId: action.id };
+    }
+    case "SELECT_ORDER":
+      return { ...state, activeOrderId: action.orderId };
+    case "SET_ACTIVE_TABLE":
+      return { ...state, activeOrderId: null };
+    case "ADD_TO_ORDER": {
+      const next = withOrder(state, action.orderId, (o) => {
+        const idx = o.items.findIndex((it) => it.menuId === action.menuId);
+        const items = idx >= 0 ? o.items.map((it, i) => i === idx ? { ...it, qty: it.qty + 1 } : it) : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "" }];
+        return { ...o, items };
+      });
+      return {
+        ...next,
+        menu: next.menu.map((m) => m.id === action.menuId ? { ...m, stock: Math.max(0, m.stock - 1) } : m)
+      };
+    }
+    case "SET_QTY":
+      return withOrder(state, action.orderId, (o) => {
+        const item = o.items[action.index];
+        if (!item) return o;
+        const items = action.qty <= 0 ? o.items.filter((_, i) => i !== action.index) : o.items.map((it, i) => i === action.index ? { ...it, qty: action.qty } : it);
+        return { ...o, items };
+      });
+    case "SET_NOTE":
+      return withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => i === action.index ? { ...it, note: action.note } : it)
+      }));
+    case "SEND_TO_KITCHEN":
+      return withOrder(state, action.orderId, (o) => {
+        if (!o.items.length) return o;
+        return {
+          ...o,
+          status: "sent",
+          sentAt: Date.now(),
+          kitchenStatus: "sent",
+          barStatus: "sent",
+          kitchenDismissed: false,
+          barDismissed: false
+        };
+      });
+    case "SET_KITCHEN": {
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      return withOrder(state, action.orderId, (o) => {
+        const patch = {};
+        if (station === "bar") {
+          patch.barStatus = action.status;
+          if (action.status === "preparing" && !o.barStartedAt) patch.barStartedAt = Date.now();
+          if (action.status === "served") patch.barServedAt = Date.now();
+        } else {
+          patch.kitchenStatus = action.status;
+          if (action.status === "preparing" && !o.kitchenStartedAt) patch.kitchenStartedAt = Date.now();
+          if (action.status === "served") patch.kitchenServedAt = Date.now();
+        }
+        return { ...o, ...patch };
+      });
+    }
+    case "REQUEST_BILL":
+      return withOrder(state, action.orderId, { billRequested: true });
+    case "PAY": {
+      const next = withOrder(state, action.orderId, { paid: true, status: "paid" });
+      return state.activeOrderId === action.orderId ? { ...next, activeOrderId: null } : next;
+    }
+    case "DISMISS_ORDER": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      if (!order) return state;
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      let next = withOrder(state, action.orderId, station === "bar" ? { barDismissed: true } : { kitchenDismissed: true });
+      const updated = next.orders.find((o) => o.id === action.orderId);
+      const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
+      const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
+      const kitchenDone = !kitchenApplies || updated.kitchenDismissed || station === "kitchen";
+      const barDone = !barApplies || updated.barDismissed || station === "bar";
+      if (kitchenDone && barDone) {
+        next = { ...next, orders: next.orders.filter((o) => o.id !== action.orderId) };
+        if (next.activeOrderId === action.orderId) next = { ...next, activeOrderId: null };
+      }
+      return next;
+    }
+    default:
+      return state;
+  }
+}
 async function runAction(action, state) {
   switch (action.type) {
     case "SET_STAFF":
@@ -240,7 +379,7 @@ async function runAction(action, state) {
       await supabase.from("tables").delete().eq("id", action.id);
       return;
     case "OPEN_ORDER": {
-      const id = `o${Date.now()}`;
+      const id = action.id || `o${Date.now()}`;
       await supabase.from("orders").insert({
         id,
         table_id: action.tableId,
@@ -342,20 +481,22 @@ async function runAction(action, state) {
       return;
     }
     case "DISMISS_ORDER": {
-      const order = state.orders.find((o) => o.id === action.orderId);
       const station = action.station === "bar" ? "bar" : "kitchen";
       const patch = station === "bar" ? { bar_dismissed: true } : { kitchen_dismissed: true };
-      await supabase.from("orders").update(patch).eq("id", action.orderId);
-      if (order) {
-        const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
-        const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
-        const kitchenDone = !kitchenApplies || order.kitchenDismissed || station === "kitchen";
-        const barDone = !barApplies || order.barDismissed || station === "bar";
-        if (kitchenDone && barDone) {
-          await supabase.from("orders").delete().eq("id", action.orderId);
-          if (state.activeOrderId === action.orderId) {
-            await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
-          }
+      const { data: updated, error } = await supabase.from("orders").update(patch).eq("id", action.orderId).select().single();
+      if (error || !updated) throw error || new Error("DISMISS_ORDER: order not found");
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const kitchenApplies = order ? order.items.some((it) => stationOf(state, it.menuId) === "kitchen") : true;
+      const barApplies = order ? order.items.some((it) => stationOf(state, it.menuId) === "bar") : true;
+      const kitchenDone = !kitchenApplies || !!updated.kitchen_dismissed;
+      const barDone = !barApplies || !!updated.bar_dismissed;
+      if (kitchenDone && barDone) {
+        const { error: itemsErr } = await supabase.from("order_items").delete().eq("order_id", action.orderId);
+        if (itemsErr) throw itemsErr;
+        const { error: orderErr } = await supabase.from("orders").delete().eq("id", action.orderId);
+        if (orderErr) throw orderErr;
+        if (state.activeOrderId === action.orderId) {
+          await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
         }
       }
       return;
@@ -373,6 +514,7 @@ function StoreProvider({ children }) {
   const refreshNow = useCallback(async () => {
     try {
       const data = await fetchAll();
+      stateRef.current = data;
       setState(data);
     } catch {
     }
@@ -390,10 +532,16 @@ function StoreProvider({ children }) {
     };
   }, [refreshNow, scheduleRefresh]);
   const dispatch = useCallback((action) => {
-    runAction(action, stateRef.current).catch((err) => {
-      console.error("Supabase write failed:", action.type, err);
+    const current = stateRef.current;
+    const act = action.type === "OPEN_ORDER" && !action.id ? { ...action, id: `o${Date.now()}` } : action;
+    const optimistic = applyOptimistic(current, act);
+    stateRef.current = optimistic;
+    setState(optimistic);
+    runAction(act, current).catch((err) => {
+      console.error("Supabase write failed:", act.type, err);
+      refreshNow();
     });
-  }, []);
+  }, [refreshNow]);
   const api = useMemo(() => ({ state, dispatch }), [state]);
   return /* @__PURE__ */ jsxDEV(StoreContext.Provider, { value: api, children }, void 0, false, {
     fileName: "js/store.js",
