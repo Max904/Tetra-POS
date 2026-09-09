@@ -572,7 +572,21 @@ async function runAction(action, state) {
       const kitchenDone = !kitchenApplies || !!updated.kitchen_dismissed;
       const barDone = !barApplies || !!updated.bar_dismissed;
       if (kitchenDone && barDone) {
-        await supabase.from("orders").delete().eq("id", action.orderId);
+        // Delete child rows first. If this Supabase project doesn't have an
+        // ON DELETE CASCADE from order_items -> orders, deleting "orders"
+        // directly fails on the foreign key — and since that error used to
+        // go unchecked, the row silently stayed in the database. The local
+        // optimistic removal would then get overwritten by the next
+        // refresh, making the dismissed order appear to "come back".
+        const { error: itemsErr } = await supabase
+          .from("order_items")
+          .delete()
+          .eq("order_id", action.orderId);
+        if (itemsErr) throw itemsErr;
+
+        const { error: orderErr } = await supabase.from("orders").delete().eq("id", action.orderId);
+        if (orderErr) throw orderErr;
+
         if (state.activeOrderId === action.orderId) {
           await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
         }
