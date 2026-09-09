@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild js/app.jsx --bundle --format=esm --outfile=dist/app.js --alias:react/jsx-dev-runtime=./js/jsxDevShim.js --external:react --external:react-dom/client --external:react/jsx-runtime --external:lucide-react --external:@supabase/supabase-js"
+    "build": "esbuild js/app.jsx --bundle --format=esm --outfile=dist/app.js --jsx=automatic --loader:.js=jsx --alias:react/jsx-dev-runtime=./js/jsxDevShim.js --external:react --external:react-dom/client --external:react/jsx-runtime --external:lucide-react --external:@supabase/supabase-js"
   },
   "devDependencies": {
     "esbuild": "^0.24.0"
