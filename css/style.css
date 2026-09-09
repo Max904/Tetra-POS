@@ -55,13 +55,19 @@ button {
 input,
 select {
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
   background: var(--panel-2);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 10px;
   padding: 10px 12px;
   outline: none;
+}
+@media (min-width: 641px) {
+  input,
+  select {
+    font-size: 14px;
+  }
 }
 input:focus,
 select:focus {
@@ -89,12 +95,19 @@ select:focus {
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.header::-webkit-scrollbar {
+  display: none;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 .brand-mark {
   width: 30px;
@@ -127,6 +140,8 @@ select:focus {
   font-size: 14px;
   font-weight: 600;
   transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .nav-btn:hover {
   background: var(--panel-2);
@@ -142,6 +157,7 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .status-chip {
@@ -379,6 +395,12 @@ select:focus {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 16px;
 }
+@media (max-width: 480px) {
+  .table-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+}
 
 .table-card {
   display: flex;
@@ -448,6 +470,10 @@ select:focus {
   .register-body {
     grid-template-columns: 1fr;
   }
+  .ticket {
+    position: static;
+    max-height: none;
+  }
 }
 
 .cat-tabs {
@@ -491,6 +517,12 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 12px;
+}
+@media (max-width: 480px) {
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+  }
 }
 .menu-item {
   display: flex;
@@ -785,6 +817,12 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
+}
+@media (max-width: 640px) {
+  .kds-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 }
 .kds-empty {
   display: flex;
@@ -1206,5 +1244,104 @@ html[data-theme="light"] .kds-card.over {
   }
   .main {
     padding: 18px 16px 30px;
+  }
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 640px) {
+  .header {
+    height: 54px;
+    gap: 8px;
+    padding: 0 10px;
+  }
+  .brand-name {
+    display: none;
+  }
+  .staff-switch,
+  .role-switch {
+    padding: 6px;
+  }
+  .staff-switch select,
+  .role-switch select {
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .icon-btn,
+  .ready-bell {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+  }
+  .main {
+    padding: 14px 12px 24px;
+  }
+  .view-head {
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .view-head h1 {
+    font-size: 20px;
+  }
+  .legend {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .cat-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .cat-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .cat-tab {
+    flex-shrink: 0;
+  }
+  .setting-tabs-grid {
+    gap: 14px;
+  }
+  .panel {
+    padding: 14px;
+  }
+  .form-row {
+    gap: 8px;
+  }
+  .form-row input,
+  .form-row select {
+    min-width: 100%;
+    width: 100%;
+  }
+  .form-row input[type="number"] {
+    width: 100%;
+  }
+  .form-row .btn {
+    width: 100%;
+  }
+  .pl-row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .pl-main {
+    min-width: 100%;
+  }
+  .k-actions {
+    flex-wrap: wrap;
+  }
+  .ka {
+    min-width: 44%;
+  }
+  .row {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 400px) {
+  .role-switch,
+  .staff-switch {
+    display: none;
   }
 }
