@@ -67,6 +67,9 @@ async function fetchAll() {
       // for a shared/unassigned line. Lets the cart be split by seat for
       // per-guest ordering and, eventually, per-guest billing.
       seat: it.seat ?? null,
+      // Set from the Kitchen/Bar screens: this single line has been
+      // prepared/checked off (order_items.done column).
+      done: !!it.done,
     });
   }
 
@@ -222,7 +225,7 @@ function applyOptimistic(state, action) {
         const items =
           idx >= 0
             ? o.items.map((it, i) => (i === idx ? { ...it, qty: it.qty + 1 } : it))
-            : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "", seat }];
+            : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "", seat, done: false }];
         return { ...o, items };
       });
       return {
@@ -252,6 +255,12 @@ function applyOptimistic(state, action) {
       return withOrder(state, action.orderId, (o) => ({
         ...o,
         items: o.items.map((it, i) => (i === action.index ? { ...it, seat: action.seat ?? null } : it)),
+      }));
+
+    case "TOGGLE_ITEM_DONE":
+      return withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => (i === action.index ? { ...it, done: !!action.done } : it)),
       }));
 
     case "SEND_TO_KITCHEN":
@@ -531,6 +540,21 @@ async function runAction(action, state) {
       return;
     }
 
+    case "TOGGLE_ITEM_DONE": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      const seat = item.seat ?? null;
+      let q = supabase
+        .from("order_items")
+        .update({ done: !!action.done })
+        .eq("order_id", action.orderId)
+        .eq("menu_id", item.menuId);
+      q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+      await q;
+      return;
+    }
+
     case "SEND_TO_KITCHEN": {
       const order = state.orders.find((o) => o.id === action.orderId);
       if (order && order.items.length) {
@@ -734,7 +758,12 @@ export function useKitchenOrders(state) {
     .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid" && !o.kitchenDismissed)
     .map((o) => ({
       ...o,
-      items: o.items.filter((it) => stationOf(state, it.menuId) === "kitchen"),
+      // `index` = position in the FULL order.items array, so per-item
+      // actions (TOGGLE_ITEM_DONE) hit the right row even though this
+      // list is filtered by station.
+      items: o.items
+        .map((it, index) => ({ ...it, index }))
+        .filter((it) => stationOf(state, it.menuId) === "kitchen"),
     }))
     .filter((o) => o.items.length > 0);
 }
@@ -744,7 +773,9 @@ export function useBarOrders(state) {
     .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid" && !o.barDismissed)
     .map((o) => ({
       ...o,
-      items: o.items.filter((it) => stationOf(state, it.menuId) === "bar"),
+      items: o.items
+        .map((it, index) => ({ ...it, index }))
+        .filter((it) => stationOf(state, it.menuId) === "bar"),
     }))
     .filter((o) => o.items.length > 0);
 }
