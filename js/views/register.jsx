@@ -14,6 +14,15 @@ function RegisterView() {
   const [query, setQuery] = useState("");
   const order = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const table = state.tables.find((t) => t.id === order?.tableId);
+  // Which guest (by seat number) new items get added to. null = shared /
+  // no particular seat — the default, so tables that don't use this stay
+  // exactly like before. Resets whenever the open order changes so a seat
+  // picked for one table doesn't silently carry over to the next.
+  const [activeSeat, setActiveSeat] = useState(null);
+  useEffect(() => {
+    setActiveSeat(null);
+  }, [order?.id]);
+  const seatCount = table?.capacity > 1 ? table.capacity : 0;
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
     return state.menu.filter(
@@ -67,6 +76,34 @@ function RegisterView() {
           lineNumber: 47,
           columnNumber: 11
         }, this),
+        seatCount > 0 && /* @__PURE__ */ jsxDEV("div", { className: "seat-tabs", children: [
+          /* @__PURE__ */ jsxDEV(
+            "button",
+            {
+              className: `seat-tab ${activeSeat === null ? "active" : ""}`,
+              disabled: !canEdit,
+              onClick: () => setActiveSeat(null),
+              children: "Compartido"
+            },
+            "shared",
+            false,
+            {},
+            this
+          ),
+          Array.from({ length: seatCount }, (_, i) => i + 1).map((n) => /* @__PURE__ */ jsxDEV(
+            "button",
+            {
+              className: `seat-tab ${activeSeat === n ? "active" : ""}`,
+              disabled: !canEdit,
+              onClick: () => setActiveSeat(n),
+              children: `Asiento ${n}`
+            },
+            n,
+            false,
+            {},
+            this
+          ))
+        ] }, void 0, true, {}, this),
         /* @__PURE__ */ jsxDEV("div", { className: "search", children: [
           /* @__PURE__ */ jsxDEV(Search, { size: 16 }, void 0, false, {
             fileName: "<stdin>",
@@ -104,7 +141,7 @@ function RegisterView() {
                 disabled: !order || !canEdit || m.stock <= 0,
                 onClick: () => {
                   if (order && canEdit && m.stock > 0) {
-                    dispatch({ type: "ADD_TO_ORDER", orderId: order.id, menuId: m.id, name: m.name, price: m.price });
+                    dispatch({ type: "ADD_TO_ORDER", orderId: order.id, menuId: m.id, name: m.name, price: m.price, seat: activeSeat });
                   }
                 },
                 children: [
@@ -192,10 +229,34 @@ function RegisterView() {
     columnNumber: 5
   }, this);
 }
+// Buckets item indices by seat number so the ticket can show "Compartido"
+// (seat === null) and "Asiento N" groups instead of one flat list. Only
+// meaningful once at least one line actually has a seat set — see hasSeats
+// below, which is what decides whether the headers render at all.
+function groupItemsBySeat(items) {
+  const bySeat = new Map();
+  items.forEach((it, idx) => {
+    const seat = it.seat ?? null;
+    if (!bySeat.has(seat)) bySeat.set(seat, []);
+    bySeat.get(seat).push(idx);
+  });
+  const seats = [...bySeat.keys()].sort((a, b) => {
+    if (a === null) return -1;
+    if (b === null) return 1;
+    return a - b;
+  });
+  return seats.map((seat) => ({ seat, indices: bySeat.get(seat) }));
+}
+function seatLabel(seat) {
+  return seat === null ? "Compartido" : `Asiento ${seat}`;
+}
 function TicketPanel({ order, canEdit }) {
   const { state, dispatch } = useStore();
   const table = state.tables.find((t) => t.id === order?.tableId);
   const items = order?.items || [];
+  const seatCount = table?.capacity > 1 ? table.capacity : 0;
+  const hasSeats = items.some((it) => (it.seat ?? null) !== null);
+  const seatGroups = groupItemsBySeat(items);
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
@@ -319,97 +380,80 @@ function TicketPanel({ order, canEdit }) {
         lineNumber: 138,
         columnNumber: 32
       }, this),
-      items.map((it, idx) => /* @__PURE__ */ jsxDEV("div", { className: "ticket-item", children: [
-        /* @__PURE__ */ jsxDEV("div", { className: "ti-top", children: [
-          /* @__PURE__ */ jsxDEV("span", { className: "ti-name", children: [
-            it.qty,
-            "\xD7 ",
-            it.name
-          ] }, void 0, true, {
-            fileName: "<stdin>",
-            lineNumber: 142,
-            columnNumber: 15
-          }, this),
-          /* @__PURE__ */ jsxDEV("span", { className: "ti-price", children: [
-            "$",
-            (it.price * it.qty).toFixed(2)
-          ] }, void 0, true, {
-            fileName: "<stdin>",
-            lineNumber: 145,
-            columnNumber: 15
-          }, this)
-        ] }, void 0, true, {
-          fileName: "<stdin>",
-          lineNumber: 141,
-          columnNumber: 13
-        }, this),
-        /* @__PURE__ */ jsxDEV("div", { className: "ti-controls", children: [
-          /* @__PURE__ */ jsxDEV("div", { className: "qty", children: [
-            /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1 || !canEdit, children: /* @__PURE__ */ jsxDEV(Minus, { size: 14 }, void 0, false, {
-              fileName: "<stdin>",
-              lineNumber: 150,
-              columnNumber: 19
-            }, this) }, void 0, false, {
-              fileName: "<stdin>",
-              lineNumber: 149,
-              columnNumber: 17
-            }, this),
-            /* @__PURE__ */ jsxDEV("span", { children: it.qty }, void 0, false, {
-              fileName: "<stdin>",
-              lineNumber: 152,
-              columnNumber: 17
-            }, this),
-            /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), disabled: !canEdit, children: /* @__PURE__ */ jsxDEV(Plus, { size: 14 }, void 0, false, {
-              fileName: "<stdin>",
-              lineNumber: 154,
-              columnNumber: 19
-            }, this) }, void 0, false, {
-              fileName: "<stdin>",
-              lineNumber: 153,
-              columnNumber: 17
-            }, this)
-          ] }, void 0, true, {
-            fileName: "<stdin>",
-            lineNumber: 148,
-            columnNumber: 15
-          }, this),
-          /* @__PURE__ */ jsxDEV(
-            "input",
-            {
-              className: "note",
-              placeholder: "Add note\u2026",
-              value: noteValue(idx),
-              disabled: !canEdit,
-              onChange: (e) => handleNoteChange(idx, e.target.value)
-            },
-            void 0,
-            false,
-            {
-              fileName: "<stdin>",
-              lineNumber: 157,
-              columnNumber: 15
-            },
-            this
-          ),
-          /* @__PURE__ */ jsxDEV("button", { className: "remove", disabled: !canEdit, onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {
-            fileName: "<stdin>",
-            lineNumber: 164,
-            columnNumber: 17
-          }, this) }, void 0, false, {
-            fileName: "<stdin>",
-            lineNumber: 163,
-            columnNumber: 15
-          }, this)
-        ] }, void 0, true, {
-          fileName: "<stdin>",
-          lineNumber: 147,
-          columnNumber: 13
-        }, this)
-      ] }, `${it.menuId}-${idx}`, true, {
-        fileName: "<stdin>",
-        lineNumber: 140,
-        columnNumber: 11
-      }, this))
+      seatGroups.map((group) => {
+        const groupSubtotal = group.indices.reduce((s, i) => s + items[i].price * items[i].qty, 0);
+        return /* @__PURE__ */ jsxDEV(Fragment, { children: [
+          hasSeats && /* @__PURE__ */ jsxDEV("div", { className: "seat-group-label", children: [
+            /* @__PURE__ */ jsxDEV("span", { children: seatLabel(group.seat) }, void 0, false, {}, this),
+            /* @__PURE__ */ jsxDEV("span", { children: [
+              "$",
+              groupSubtotal.toFixed(2)
+            ] }, void 0, true, {}, this)
+          ] }, void 0, true, {}, this),
+          group.indices.map((idx) => {
+            const it = items[idx];
+            return /* @__PURE__ */ jsxDEV("div", { className: "ticket-item", children: [
+              /* @__PURE__ */ jsxDEV("div", { className: "ti-top", children: [
+                /* @__PURE__ */ jsxDEV("span", { className: "ti-name", children: [
+                  it.qty,
+                  "\xD7 ",
+                  it.name
+                ] }, void 0, true, {}, this),
+                /* @__PURE__ */ jsxDEV("span", { className: "ti-price", children: [
+                  "$",
+                  (it.price * it.qty).toFixed(2)
+                ] }, void 0, true, {}, this)
+              ] }, void 0, true, {}, this),
+              /* @__PURE__ */ jsxDEV("div", { className: "ti-controls", children: [
+                /* @__PURE__ */ jsxDEV("div", { className: "qty", children: [
+                  /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1 || !canEdit, children: /* @__PURE__ */ jsxDEV(Minus, { size: 14 }, void 0, false, {}, this) }, void 0, false, {}, this),
+                  /* @__PURE__ */ jsxDEV("span", { children: it.qty }, void 0, false, {}, this),
+                  /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), disabled: !canEdit, children: /* @__PURE__ */ jsxDEV(Plus, { size: 14 }, void 0, false, {}, this) }, void 0, false, {}, this)
+                ] }, void 0, true, {}, this),
+                /* @__PURE__ */ jsxDEV(
+                  "input",
+                  {
+                    className: "note",
+                    placeholder: "Add note\u2026",
+                    value: noteValue(idx),
+                    disabled: !canEdit,
+                    onChange: (e) => handleNoteChange(idx, e.target.value)
+                  },
+                  void 0,
+                  false,
+                  {},
+                  this
+                ),
+                /* @__PURE__ */ jsxDEV("button", { className: "remove", disabled: !canEdit, onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {}, this) }, void 0, false, {}, this)
+              ] }, void 0, true, {}, this),
+              seatCount > 0 && /* @__PURE__ */ jsxDEV("label", { className: "seat-assign", children: [
+                "Asiento",
+                /* @__PURE__ */ jsxDEV(
+                  "select",
+                  {
+                    value: it.seat ?? "",
+                    disabled: !canEdit,
+                    onChange: (e) => dispatch({
+                      type: "SET_ITEM_SEAT",
+                      orderId: order.id,
+                      index: idx,
+                      seat: e.target.value === "" ? null : Number(e.target.value)
+                    }),
+                    children: [
+                      /* @__PURE__ */ jsxDEV("option", { value: "", children: "Compartido" }, "shared", false, {}, this),
+                      Array.from({ length: seatCount }, (_, i) => i + 1).map((n) => /* @__PURE__ */ jsxDEV("option", { value: n, children: n }, n, false, {}, this))
+                    ]
+                  },
+                  void 0,
+                  true,
+                  {},
+                  this
+                )
+              ] }, void 0, true, {}, this)
+            ] }, `${it.menuId}-${idx}`, true, {}, this);
+          })
+        ] }, group.seat === null ? "shared" : group.seat, true, {}, this);
+      })
     ] }, void 0, true, {
       fileName: "<stdin>",
       lineNumber: 137,
