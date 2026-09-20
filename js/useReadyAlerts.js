@@ -12,9 +12,19 @@ import { playReadyBell } from "./notify.js";
 // expose the "Mark Ready" button — for stations that have items on them),
 // so no applicability check is needed here: a non-applicable station's
 // status just never moves off its default.
+//
+// LINE-LEVEL: Kitchen/Bar can also send individual items (or a whole
+// category label) to the waiters via `item.ready`. When lines newly flip to
+// ready on an order, that rings ONCE per order per update — even if several
+// lines were sent together — unless a station-level ring already fired for
+// that same order in this update (so "Mark Ready" right after sending
+// items doesn't double-ring).
+//
 // Rings only on devices configured as "waiter" (deviceRole === "waiter").
 // Kitchen and Bar Display screens pass their own deviceRole in here too, so
 // this hook still tracks the list for them, it just never plays the sound.
+const itemKey = (it) => `${it.menuId}|${it.seat ?? ""}`;
+
 function useReadyAlerts(orders, deviceRole) {
   const prevStatusRef = useRef({});
   const [readyOrders, setReadyOrders] = useState([]);
@@ -23,13 +33,21 @@ function useReadyAlerts(orders, deviceRole) {
     const nextStatus = {};
     let ringCount = 0;
     for (const order of orders) {
-      const prevKitchen = prevStatus[order.id]?.kitchen;
-      const prevBar = prevStatus[order.id]?.bar;
-      nextStatus[order.id] = { kitchen: order.kitchenStatus, bar: order.barStatus };
+      const prev = prevStatus[order.id];
+      const prevKitchen = prev?.kitchen;
+      const prevBar = prev?.bar;
+      const readyKeys = order.items.filter((it) => it.ready).map(itemKey);
+      nextStatus[order.id] = { kitchen: order.kitchenStatus, bar: order.barStatus, ready: readyKeys };
+      let stationRang = false;
       if (order.kitchenStatus === "ready" && prevKitchen && prevKitchen !== "ready") {
         ringCount += 1;
+        stationRang = true;
       }
       if (order.barStatus === "ready" && prevBar && prevBar !== "ready") {
+        ringCount += 1;
+        stationRang = true;
+      }
+      if (!stationRang && prev && readyKeys.some((k) => !prev.ready.includes(k))) {
         ringCount += 1;
       }
     }
@@ -43,7 +61,13 @@ function useReadyAlerts(orders, deviceRole) {
       }
     }
     setReadyOrders(
-      orders.filter((o) => !o.paid && (o.kitchenStatus === "ready" || o.barStatus === "ready"))
+      orders.filter(
+        (o) =>
+          !o.paid &&
+          (o.kitchenStatus === "ready" ||
+            o.barStatus === "ready" ||
+            (o.status !== "served" && o.items.some((it) => it.ready)))
+      )
     );
   }, [orders, deviceRole]);
   return readyOrders;
