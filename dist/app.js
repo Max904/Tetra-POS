@@ -18,7 +18,7 @@ import {
   User as User2,
   ChevronDown,
   LayoutDashboard,
-  Bell,
+  Bell as Bell3,
   Users as Users3
 } from "lucide-react";
 
@@ -732,6 +732,7 @@ function playReadyBell() {
 }
 
 // js/useReadyAlerts.js
+var itemKey = (it) => `${it.menuId}|${it.seat ?? ""}`;
 function useReadyAlerts(orders, deviceRole) {
   const prevStatusRef = useRef2({});
   const [readyOrders, setReadyOrders] = useState2([]);
@@ -740,13 +741,21 @@ function useReadyAlerts(orders, deviceRole) {
     const nextStatus = {};
     let ringCount = 0;
     for (const order of orders) {
-      const prevKitchen = prevStatus[order.id]?.kitchen;
-      const prevBar = prevStatus[order.id]?.bar;
-      nextStatus[order.id] = { kitchen: order.kitchenStatus, bar: order.barStatus };
+      const prev = prevStatus[order.id];
+      const prevKitchen = prev?.kitchen;
+      const prevBar = prev?.bar;
+      const readyKeys = order.items.filter((it) => it.ready).map(itemKey);
+      nextStatus[order.id] = { kitchen: order.kitchenStatus, bar: order.barStatus, ready: readyKeys };
+      let stationRang = false;
       if (order.kitchenStatus === "ready" && prevKitchen && prevKitchen !== "ready") {
         ringCount += 1;
+        stationRang = true;
       }
       if (order.barStatus === "ready" && prevBar && prevBar !== "ready") {
+        ringCount += 1;
+        stationRang = true;
+      }
+      if (!stationRang && prev && readyKeys.some((k) => !prev.ready.includes(k))) {
         ringCount += 1;
       }
     }
@@ -757,7 +766,9 @@ function useReadyAlerts(orders, deviceRole) {
       }
     }
     setReadyOrders(
-      orders.filter((o) => !o.paid && (o.kitchenStatus === "ready" || o.barStatus === "ready"))
+      orders.filter(
+        (o) => !o.paid && (o.kitchenStatus === "ready" || o.barStatus === "ready" || o.status !== "served" && o.items.some((it) => it.ready))
+      )
     );
   }, [orders, deviceRole]);
   return readyOrders;
@@ -1328,7 +1339,8 @@ function TicketPanel({ order, canEdit }) {
                 /* @__PURE__ */ jsxDEV("span", { className: "ti-name", children: [
                   it.qty,
                   "\xD7 ",
-                  it.name
+                  it.name,
+                  it.ready && jsxDEV("span", { className: "ti-ready", children: "\u2713 Listo" })
                 ] }, void 0, true, {}, this),
                 /* @__PURE__ */ jsxDEV("span", { className: "ti-price", children: [
                   "$",
@@ -1556,7 +1568,7 @@ function cap2(s) {
 
 // js/views/kds.jsx
 import { useEffect as useEffect4, useState as useState4 } from "react";
-import { ChefHat as ChefHat2, CookingPot, Check, X, Timer, StickyNote, Users } from "lucide-react";
+import { ChefHat as ChefHat2, CookingPot, Check, X, Timer, StickyNote, Users, Bell } from "lucide-react";
 function useNow() {
   const [now, setNow] = useState4(() => Date.now());
   useEffect4(() => {
@@ -1678,7 +1690,18 @@ function KdsView() {
           columnNumber: 17
         }, this),
         /* @__PURE__ */ jsxDEV("div", { className: "k-groups", children: groupByCategory(o.items, state.menu, state.categories).map((group) => /* @__PURE__ */ jsxDEV("div", { className: "k-cat-group", children: [
-          /* @__PURE__ */ jsxDEV("span", { className: "k-cat-label", children: group.cat }, void 0, false, {}, this),
+          jsxDEV("div", { className: "k-cat-head", children: [
+            jsxDEV("span", { className: "k-cat-label", children: group.cat }),
+            (() => {
+              const allReady = group.items.every((it) => it.ready);
+              return jsxDEV("button", {
+                className: `k-send ${allReady ? "sent" : ""}`,
+                title: allReady ? "Quitar aviso a garzones" : `Avisar a garzones: ${group.cat}`,
+                onClick: () => dispatch({ type: "SET_ITEMS_READY", orderId: o.id, indices: group.items.map((it) => it.index), ready: !allReady }),
+                children: [jsxDEV(Bell, { size: 13 }), allReady ? " Enviado" : " Enviar todo"]
+              });
+            })()
+          ] }),
           /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", {
             className: `k-item ${it.done ? "done" : ""}`,
             role: "checkbox",
@@ -1700,7 +1723,16 @@ function KdsView() {
                   /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {}, this),
                   it.note
                 ] }, void 0, true, {}, this)
-              ] }, void 0, true, {}, this)
+              ] }, void 0, true, {}, this),
+              jsxDEV("button", {
+                className: `k-send item ${it.ready ? "sent" : ""}`,
+                title: it.ready ? "Quitar aviso a garzones" : "Avisar a garzones",
+                onClick: (e) => {
+                  e.stopPropagation();
+                  dispatch({ type: "SET_ITEMS_READY", orderId: o.id, indices: [it.index], ready: !it.ready });
+                },
+                children: [jsxDEV(Bell, { size: 13 }), it.ready ? " Enviado" : " Enviar"]
+              })
             ]
           }, i, true, {}, this)) }, void 0, false, {}, this)
         ] }, group.cat, true, {}, this)) }, void 0, false, {}, this),
@@ -1777,7 +1809,7 @@ function KdsView() {
 
 // js/views/bar.jsx
 import { useEffect as useEffect5, useState as useState5 } from "react";
-import { Beer, CookingPot as CookingPot2, Check as Check2, X as X2, Timer as Timer2, StickyNote as StickyNote2, Users as Users2 } from "lucide-react";
+import { Beer, CookingPot as CookingPot2, Check as Check2, X as X2, Timer as Timer2, StickyNote as StickyNote2, Users as Users2, Bell as Bell2 } from "lucide-react";
 function useNow2() {
   const [now, setNow] = useState5(() => Date.now());
   useEffect5(() => {
@@ -1843,7 +1875,18 @@ function BarView() {
           ] }, void 0, true, {}, this)
         ] }, void 0, true, {}, this),
         /* @__PURE__ */ jsxDEV("div", { className: "k-groups", children: groupByCategory2(o.items, state.menu, state.categories).map((group) => /* @__PURE__ */ jsxDEV("div", { className: "k-cat-group", children: [
-          /* @__PURE__ */ jsxDEV("span", { className: "k-cat-label", children: group.cat }, void 0, false, {}, this),
+          jsxDEV("div", { className: "k-cat-head", children: [
+            jsxDEV("span", { className: "k-cat-label", children: group.cat }),
+            (() => {
+              const allReady = group.items.every((it) => it.ready);
+              return jsxDEV("button", {
+                className: `k-send ${allReady ? "sent" : ""}`,
+                title: allReady ? "Quitar aviso a garzones" : `Avisar a garzones: ${group.cat}`,
+                onClick: () => dispatch({ type: "SET_ITEMS_READY", orderId: o.id, indices: group.items.map((it) => it.index), ready: !allReady }),
+                children: [jsxDEV(Bell2, { size: 13 }), allReady ? " Enviado" : " Enviar todo"]
+              });
+            })()
+          ] }),
           /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", {
             className: `k-item ${it.done ? "done" : ""}`,
             role: "checkbox",
@@ -1865,7 +1908,16 @@ function BarView() {
                   /* @__PURE__ */ jsxDEV(StickyNote2, { size: 12 }, void 0, false, {}, this),
                   it.note
                 ] }, void 0, true, {}, this)
-              ] }, void 0, true, {}, this)
+              ] }, void 0, true, {}, this),
+              jsxDEV("button", {
+                className: `k-send item ${it.ready ? "sent" : ""}`,
+                title: it.ready ? "Quitar aviso a garzones" : "Avisar a garzones",
+                onClick: (e) => {
+                  e.stopPropagation();
+                  dispatch({ type: "SET_ITEMS_READY", orderId: o.id, indices: [it.index], ready: !it.ready });
+                },
+                children: [jsxDEV(Bell2, { size: 13 }), it.ready ? " Enviado" : " Enviar"]
+              })
             ]
           }, i, true, {}, this)) }, void 0, false, {}, this)
         ] }, group.cat, true, {}, this)) }, void 0, false, {}, this),
@@ -2625,7 +2677,7 @@ function ReadyBell({ count }) {
       className: `ready-bell icon-btn ${count ? "ringing" : ""}`,
       title: count ? `${count} order${count === 1 ? "" : "s"} ready for pickup` : "No orders ready for pickup",
       children: [
-        jsxDEV(Bell, { size: 18 }),
+        jsxDEV(Bell3, { size: 18 }),
         count > 0 && jsxDEV("span", { className: "ready-badge", children: count })
       ]
     }
