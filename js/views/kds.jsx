@@ -1,6 +1,6 @@
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { useEffect, useState } from "react";
-import { ChefHat, CookingPot, Check, X, Timer, StickyNote, Users } from "lucide-react";
+import { ChefHat, CookingPot, Check, X, Timer, StickyNote, Users, Bell } from "lucide-react";
 import { useStore, useKitchenOrders } from "./../store.js";
 function useNow() {
   const [now, setNow] = useState(() => Date.now());
@@ -132,7 +132,18 @@ function KdsView() {
           columnNumber: 17
         }, this),
         /* @__PURE__ */ jsxDEV("div", { className: "k-groups", children: groupByCategory(o.items, state.menu, state.categories).map((group) => /* @__PURE__ */ jsxDEV("div", { className: "k-cat-group", children: [
-          /* @__PURE__ */ jsxDEV("span", { className: "k-cat-label", children: group.cat }, void 0, false, {}, this),
+          jsxDEV("div", { className: "k-cat-head", children: [
+            jsxDEV("span", { className: "k-cat-label", children: group.cat }),
+            (() => {
+              const allReady = group.items.every((it) => it.ready);
+              return jsxDEV("button", {
+                className: `k-send ${allReady ? "sent" : ""}`,
+                title: allReady ? "Quitar aviso a garzones" : `Avisar a garzones: ${group.cat}`,
+                onClick: () => dispatch({ type: "SET_ITEMS_READY", orderId: o.id, indices: group.items.map((it) => it.index), ready: !allReady }),
+                children: [jsxDEV(Bell, { size: 13 }), allReady ? " Enviado" : " Enviar todo"]
+              });
+            })()
+          ] }),
           /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", {
             className: `k-item ${it.done ? "done" : ""}`,
             role: "checkbox",
@@ -155,6 +166,15 @@ function KdsView() {
                 it.note
               ] }, void 0, true, {}, this)
             ] }, void 0, true, {}, this)
+            jsxDEV("button", {
+              className: `k-send item ${it.ready ? "sent" : ""}`,
+              title: it.ready ? "Quitar aviso a garzones" : "Avisar a garzones",
+              onClick: (e) => {
+                e.stopPropagation();
+                dispatch({ type: "SET_ITEMS_READY", orderId: o.id, indices: [it.index], ready: !it.ready });
+              },
+              children: [jsxDEV(Bell, { size: 13 }), it.ready ? " Enviado" : " Enviar"]
+            })
           ] }, i, true, {}, this)) }, void 0, false, {}, this)
         ] }, group.cat, true, {}, this)) }, void 0, false, {}, this),
         /* @__PURE__ */ jsxDEV("footer", { className: "k-actions", children: [
