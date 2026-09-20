@@ -19,7 +19,7 @@ import {
   ChevronDown,
   LayoutDashboard,
   Bell,
-  Users as Users2
+  Users as Users3
 } from "lucide-react";
 
 // js/store.js
@@ -1716,7 +1716,7 @@ function KdsView() {
 
 // js/views/bar.jsx
 import { useEffect as useEffect5, useState as useState5 } from "react";
-import { Beer, CookingPot as CookingPot2, Check as Check2, X as X2, Timer as Timer2, StickyNote as StickyNote2 } from "lucide-react";
+import { Beer, CookingPot as CookingPot2, Check as Check2, X as X2, Timer as Timer2, StickyNote as StickyNote2, Users as Users2 } from "lucide-react";
 function useNow2() {
   const [now, setNow] = useState5(() => Date.now());
   useEffect5(() => {
@@ -1790,6 +1790,10 @@ function BarView() {
             ] }, void 0, true, {}, this),
             /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
               /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
+              it.seat != null && /* @__PURE__ */ jsxDEV("span", { className: "k-seat", children: [
+                /* @__PURE__ */ jsxDEV(Users2, { size: 12 }, void 0, false, {}, this),
+                `Asiento ${it.seat}`
+              ] }, void 0, true, {}, this),
               it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
                 /* @__PURE__ */ jsxDEV(StickyNote2, { size: 12 }, void 0, false, {}, this),
                 it.note
@@ -2502,10 +2506,10 @@ function ThemeToggle({ theme, setTheme }) {
     this
   );
 }
-var ROLE_ICONS = { waiter: Users2, kitchen: ChefHat4, bar: Beer3 };
+var ROLE_ICONS = { waiter: Users3, kitchen: ChefHat4, bar: Beer3 };
 var ROLE_LABELS = { waiter: "Waiter", kitchen: "Kitchen", bar: "Bar" };
 function RoleSwitch({ role, onChange }) {
-  const RoleIcon = ROLE_ICONS[role] || Users2;
+  const RoleIcon = ROLE_ICONS[role] || Users3;
   return jsxDEV(
     "label",
     {
