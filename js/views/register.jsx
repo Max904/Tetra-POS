@@ -1,6 +1,6 @@
 import { Fragment, jsxDEV } from "react/jsx-dev-runtime";
 import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt, ImageOff } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt, ImageOff, ChevronDown } from "lucide-react";
 import { useStore } from "./../store.js";
 import { TAX_RATE } from "./../data.js";
 function stockLabel(item) {
@@ -312,31 +312,8 @@ function TicketPanel({ order, canEdit }) {
       columnNumber: 7
     }, this);
   }
-  // "Sale" strip: once the order has gone to the kitchen, the waiter can tell
-  // the kitchen/bar to start a whole category (e.g. Mains) with one tap.
-  const catOfItem = (it) => state.menu.find((m) => m.id === it.menuId)?.category || "Other";
-  const saleGroups = [...state.categories, "Other"]
-    .map((cat) => ({
-      cat,
-      indices: items.map((it, i) => (catOfItem(it) === cat ? i : -1)).filter((i) => i >= 0),
-    }))
-    .filter((g) => g.indices.length > 0);
-  const saleStrip = order.status !== "new" && saleGroups.length > 0 && jsxDEV("div", {
-    className: "sale-strip",
-    children: [
-      jsxDEV("span", { className: "sale-label", children: "Sale" }),
-      ...saleGroups.map((g) => {
-        const fired = g.indices.every((i) => items[i].sale);
-        return jsxDEV("button", {
-          className: `sale-btn ${fired ? "sent" : ""}`,
-          disabled: fired,
-          title: fired ? "Cocina/barra ya fue avisada" : `Avisar que salga: ${g.cat}`,
-          onClick: () => dispatch({ type: "SET_ITEMS_SALE", orderId: order.id, indices: g.indices, sale: true }),
-          children: fired ? `\u2713 ${g.cat}` : g.cat
-        }, g.cat);
-      })
-    ]
-  });
+  const saleStrip = jsxDEV(SaleStrip, { order });
+  const historyBlock = jsxDEV(OrderHistory, { order });
   return /* @__PURE__ */ jsxDEV("aside", { className: "ticket", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "ticket-head", children: [
       /* @__PURE__ */ jsxDEV("div", { children: [
@@ -479,7 +456,8 @@ function TicketPanel({ order, canEdit }) {
             ] }, `${it.menuId}-${idx}`, true, {}, this);
           })
         ] }, group.seat === null ? "shared" : group.seat, true, {}, this);
-      })
+      }),
+      historyBlock
     ] }, void 0, true, {
       fileName: "<stdin>",
       lineNumber: 137,
@@ -642,6 +620,89 @@ function TicketPanel({ order, canEdit }) {
     lineNumber: 128,
     columnNumber: 5
   }, this);
+}
+function SaleStrip({ order }) {
+  const { state, dispatch } = useStore();
+  if (!order || order.status === "new") return null;
+  const items = order.items;
+  const catOfItem = (it) => state.menu.find((m) => m.id === it.menuId)?.category || "Other";
+  const groups = [...state.categories, "Other"]
+    .map((cat) => ({
+      cat,
+      indices: items.map((it, i) => (catOfItem(it) === cat ? i : -1)).filter((i) => i >= 0),
+    }))
+    .filter((g) => g.indices.length > 0);
+  if (!groups.length) return null;
+  return jsxDEV("div", {
+    className: "sale-strip",
+    children: [
+      jsxDEV("span", { className: "sale-label", children: "Sale" }),
+      ...groups.map((g) => {
+        const fired = g.indices.every((i) => items[i].sale);
+        return jsxDEV("button", {
+          className: `sale-btn ${fired ? "sent" : ""}`,
+          disabled: fired,
+          title: fired ? "Cocina/barra ya fue avisada" : `Avisar que salga: ${g.cat}`,
+          onClick: () => dispatch({ type: "SET_ITEMS_SALE", orderId: order.id, indices: g.indices, sale: true }),
+          children: fired ? `\u2713 ${g.cat}` : g.cat
+        }, g.cat);
+      })
+    ]
+  });
+}
+// Earlier comandas for the same table that already went to the kitchen/bar.
+// They stay visible in the cart so the waiter can still fire ("Sale") a
+// category on them, e.g. after adding more items in a newer comanda.
+function OrderHistory({ order }) {
+  const { state } = useStore();
+  const [open, setOpen] = useState({});
+  const tableOrders = state.orders
+    .filter((o) => o.tableId === order.tableId && !o.paid)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  const numberOf = (id) => tableOrders.findIndex((o) => o.id === id) + 1;
+  const past = tableOrders.filter((o) => o.id !== order.id && o.status !== "new").reverse();
+  if (!past.length) return null;
+  return jsxDEV("div", {
+    className: "order-history",
+    children: [
+      jsxDEV("div", { className: "history-title", children: "Comandas anteriores" }),
+      ...past.map((o) => {
+        const isOpen = !!open[o.id];
+        const time = new Date(o.sentAt || o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const count = o.items.reduce((s, it) => s + it.qty, 0);
+        return jsxDEV("div", {
+          className: "history-card",
+          children: [
+            jsxDEV("button", {
+              className: "history-head",
+              onClick: () => setOpen((s) => ({ ...s, [o.id]: !s[o.id] })),
+              children: [
+                jsxDEV("span", { className: "history-name", children: `Comanda ${numberOf(o.id)} \u00b7 ${time}` }),
+                jsxDEV("span", { className: `kstatus ${o.status}`, children: cap(o.status) }),
+                jsxDEV("span", { className: "history-count", children: `${count} \u00edtem${count === 1 ? "" : "s"}` }),
+                jsxDEV(ChevronDown, { size: 16, className: isOpen ? "chev open" : "chev" })
+              ]
+            }),
+            jsxDEV(SaleStrip, { order: o }),
+            isOpen && jsxDEV("ul", {
+              className: "history-items",
+              children: o.items.map((it, i) =>
+                jsxDEV("li", {
+                  children: [
+                    jsxDEV("span", { children: `${it.qty}\u00d7 ${it.name}` }),
+                    it.seat != null && jsxDEV("span", { className: "history-meta", children: `Asiento ${it.seat}` }),
+                    it.note && jsxDEV("span", { className: "history-meta", children: it.note }),
+                    it.ready && jsxDEV("span", { className: "ti-ready", children: "\u2713 Listo" }),
+                    it.sale && jsxDEV("span", { className: "k-sale", children: "SALE" })
+                  ]
+                }, i)
+              )
+            })
+          ]
+        }, o.id);
+      })
+    ]
+  });
 }
 function setQty(dispatch, order, index, qty) {
   dispatch({ type: "SET_QTY", orderId: order.id, index, qty: Math.max(0, qty) });
