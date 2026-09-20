@@ -119,7 +119,10 @@ async function fetchAll() {
       done: !!it.done,
       // Sent to the waiters individually from Kitchen/Bar ("ready for
       // pickup" at line level, order_items.ready column).
-      ready: !!it.ready
+      ready: !!it.ready,
+      // The waiter pressed "Sale" for this line's category: the kitchen/bar
+      // should start preparing it (order_items.sale column).
+      sale: !!it.sale
     });
   }
   const stationById = {};
@@ -241,7 +244,7 @@ function applyOptimistic(state, action) {
       const seat = action.seat ?? null;
       const next = withOrder(state, action.orderId, (o) => {
         const idx = o.items.findIndex((it) => it.menuId === action.menuId && (it.seat ?? null) === seat);
-        const items = idx >= 0 ? o.items.map((it, i) => i === idx ? { ...it, qty: it.qty + 1 } : it) : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "", seat, done: false, ready: false }];
+        const items = idx >= 0 ? o.items.map((it, i) => i === idx ? { ...it, qty: it.qty + 1 } : it) : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "", seat, done: false, ready: false, sale: false }];
         return { ...o, items };
       });
       return {
@@ -270,6 +273,11 @@ function applyOptimistic(state, action) {
       return withOrder(state, action.orderId, (o) => ({
         ...o,
         items: o.items.map((it, i) => i === action.index ? { ...it, done: !!action.done } : it)
+      }));
+    case "SET_ITEMS_SALE":
+      return withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => action.indices.includes(i) ? { ...it, sale: !!action.sale } : it)
       }));
     case "SET_ITEMS_READY":
       return withOrder(state, action.orderId, (o) => ({
@@ -421,6 +429,21 @@ async function runAction(action, state) {
     case "RENAME_TABLE":
       await supabase.from("tables").update({ name: action.name }).eq("id", action.id);
       return;
+    case "SET_ITEMS_SALE": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      if (!order) return;
+      const targets = action.indices.map((i) => order.items[i]).filter(Boolean);
+      const results = await Promise.all(
+        targets.map((item) => {
+          const seat = item.seat ?? null;
+          let q = supabase.from("order_items").update({ sale: !!action.sale }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+          return seat === null ? q.is("seat", null) : q.eq("seat", seat);
+        })
+      );
+      const failed = results.find((r) => r.error);
+      if (failed) throw failed.error;
+      return;
+    }
     case "SET_ITEMS_READY": {
       const order = state.orders.find((o) => o.id === action.orderId);
       if (!order) return;
