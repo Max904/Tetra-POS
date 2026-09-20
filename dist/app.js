@@ -5,7 +5,7 @@ function jsxDEV(type, props, key) {
 }
 
 // js/app.jsx
-import { useEffect as useEffect6, useState as useState7 } from "react";
+import { useEffect as useEffect7, useState as useState7 } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ShoppingCart,
@@ -771,6 +771,16 @@ function playReadyBell() {
   } catch {
   }
 }
+function playSaleAlert() {
+  try {
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    tone(ctx, 988, now, 0.12, 0.25);
+    tone(ctx, 988, now + 0.18, 0.12, 0.25);
+    tone(ctx, 1318.5, now + 0.36, 0.3, 0.25);
+  } catch {
+  }
+}
 
 // js/useReadyAlerts.js
 var itemKey = (it) => `${it.menuId}|${it.seat ?? ""}`;
@@ -813,6 +823,34 @@ function useReadyAlerts(orders, deviceRole) {
     );
   }, [orders, deviceRole]);
   return readyOrders;
+}
+
+// js/useSaleAlerts.js
+import { useEffect as useEffect3, useRef as useRef3 } from "react";
+var itemKey2 = (it) => `${it.menuId}|${it.seat ?? ""}`;
+function useSaleAlerts(orders, menu, deviceRole) {
+  const prevRef = useRef3(null);
+  useEffect3(() => {
+    const prev = prevRef.current;
+    const next = {};
+    let rings = 0;
+    for (const order of orders) {
+      const saleKeys = order.items.filter((it) => it.sale).map(itemKey2);
+      next[order.id] = saleKeys;
+      if (!prev || !prev[order.id]) continue;
+      const fresh = order.items.filter((it) => it.sale && !prev[order.id].includes(itemKey2(it)));
+      const mine = fresh.some((it) => {
+        const station = menu.find((m) => m.id === it.menuId)?.station || "kitchen";
+        return station === deviceRole;
+      });
+      if (mine) rings += 1;
+    }
+    prevRef.current = next;
+    if (deviceRole === "waiter") return;
+    for (let i = 0; i < rings; i++) {
+      setTimeout(() => playSaleAlert(), i * 700);
+    }
+  }, [orders, menu, deviceRole]);
 }
 
 // js/views/floorplan.jsx
@@ -960,7 +998,7 @@ function FloorPlanView({ setView }) {
 }
 
 // js/views/register.jsx
-import { useEffect as useEffect3, useMemo as useMemo2, useState as useState3 } from "react";
+import { useEffect as useEffect4, useMemo as useMemo2, useState as useState3 } from "react";
 import { Search, Plus, Minus, Trash2, ChefHat, Printer, CreditCard, PackageX, Receipt, ImageOff } from "lucide-react";
 
 // js/data.js
@@ -1007,7 +1045,7 @@ function RegisterView() {
   const order = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const table = state.tables.find((t) => t.id === order?.tableId);
   const [activeSeat, setActiveSeat] = useState3(null);
-  useEffect3(() => {
+  useEffect4(() => {
     setActiveSeat(null);
   }, [order?.id]);
   const seatCount = table?.capacity > 1 ? table.capacity : 0;
@@ -1245,7 +1283,7 @@ function TicketPanel({ order, canEdit }) {
   const total = subtotal + tax;
   const canSend = items.length > 0 && order && order.status === "new";
   const [noteDrafts, setNoteDrafts] = useState3({});
-  useEffect3(() => {
+  useEffect4(() => {
     setNoteDrafts({});
   }, [order?.id]);
   const noteValue = (idx) => noteDrafts[idx] !== void 0 ? noteDrafts[idx] : items[idx]?.note || "";
@@ -1295,6 +1333,27 @@ function TicketPanel({ order, canEdit }) {
       columnNumber: 7
     }, this);
   }
+  const catOfItem = (it) => state.menu.find((m) => m.id === it.menuId)?.category || "Other";
+  const saleGroups = [...state.categories, "Other"].map((cat) => ({
+    cat,
+    indices: items.map((it, i) => catOfItem(it) === cat ? i : -1).filter((i) => i >= 0)
+  })).filter((g) => g.indices.length > 0);
+  const saleStrip = order.status !== "new" && saleGroups.length > 0 && jsxDEV("div", {
+    className: "sale-strip",
+    children: [
+      jsxDEV("span", { className: "sale-label", children: "Sale" }),
+      ...saleGroups.map((g) => {
+        const fired = g.indices.every((i) => items[i].sale);
+        return jsxDEV("button", {
+          className: `sale-btn ${fired ? "sent" : ""}`,
+          disabled: fired,
+          title: fired ? "Cocina/barra ya fue avisada" : `Avisar que salga: ${g.cat}`,
+          onClick: () => dispatch({ type: "SET_ITEMS_SALE", orderId: order.id, indices: g.indices, sale: true }),
+          children: fired ? `\u2713 ${g.cat}` : g.cat
+        }, g.cat);
+      })
+    ]
+  });
   return /* @__PURE__ */ jsxDEV("aside", { className: "ticket", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "ticket-head", children: [
       /* @__PURE__ */ jsxDEV("div", { children: [
@@ -1443,6 +1502,7 @@ function TicketPanel({ order, canEdit }) {
       lineNumber: 137,
       columnNumber: 7
     }, this),
+    saleStrip,
     /* @__PURE__ */ jsxDEV("div", { className: "ticket-totals", children: [
       /* @__PURE__ */ jsxDEV("div", { className: "tl", children: [
         /* @__PURE__ */ jsxDEV("span", { children: "Subtotal" }, void 0, false, {
@@ -1608,11 +1668,11 @@ function cap2(s) {
 }
 
 // js/views/kds.jsx
-import { useEffect as useEffect4, useState as useState4 } from "react";
+import { useEffect as useEffect5, useState as useState4 } from "react";
 import { ChefHat as ChefHat2, CookingPot, Check, X, Timer, StickyNote, Users, Bell } from "lucide-react";
 function useNow() {
   const [now, setNow] = useState4(() => Date.now());
-  useEffect4(() => {
+  useEffect5(() => {
     const id = setInterval(() => setNow(Date.now()), 1e3);
     return () => clearInterval(id);
   }, []);
@@ -1755,7 +1815,10 @@ function KdsView() {
                 "\xD7"
               ] }, void 0, true, {}, this),
               /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
-                /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
+                jsxDEV("span", { className: "k-name-row", children: [
+                  jsxDEV("span", { children: it.name }),
+                  it.sale && jsxDEV("span", { className: "k-sale", children: "\xA1SALE!" })
+                ] }),
                 it.seat != null && /* @__PURE__ */ jsxDEV("span", { className: "k-seat", children: [
                   /* @__PURE__ */ jsxDEV(Users, { size: 12 }, void 0, false, {}, this),
                   `Asiento ${it.seat}`
@@ -1849,11 +1912,11 @@ function KdsView() {
 }
 
 // js/views/bar.jsx
-import { useEffect as useEffect5, useState as useState5 } from "react";
+import { useEffect as useEffect6, useState as useState5 } from "react";
 import { Beer, CookingPot as CookingPot2, Check as Check2, X as X2, Timer as Timer2, StickyNote as StickyNote2, Users as Users2, Bell as Bell2 } from "lucide-react";
 function useNow2() {
   const [now, setNow] = useState5(() => Date.now());
-  useEffect5(() => {
+  useEffect6(() => {
     const id = setInterval(() => setNow(Date.now()), 1e3);
     return () => clearInterval(id);
   }, []);
@@ -1940,7 +2003,10 @@ function BarView() {
                 "\xD7"
               ] }, void 0, true, {}, this),
               /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
-                /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
+                jsxDEV("span", { className: "k-name-row", children: [
+                  jsxDEV("span", { children: it.name }),
+                  it.sale && jsxDEV("span", { className: "k-sale", children: "\xA1SALE!" })
+                ] }),
                 it.seat != null && /* @__PURE__ */ jsxDEV("span", { className: "k-seat", children: [
                   /* @__PURE__ */ jsxDEV(Users2, { size: 12 }, void 0, false, {}, this),
                   `Asiento ${it.seat}`
@@ -2651,7 +2717,7 @@ function getSavedTheme() {
 }
 function useClock() {
   const [now, setNow] = useState7(() => /* @__PURE__ */ new Date());
-  useEffect6(() => {
+  useEffect7(() => {
     const id = setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
     return () => clearInterval(id);
   }, []);
@@ -2737,6 +2803,7 @@ function Header({ view, setView, theme, setTheme }) {
     setRole(next);
   };
   const readyOrders = useReadyAlerts(state.orders, role);
+  useSaleAlerts(state.orders, state.menu, role);
   return /* @__PURE__ */ jsxDEV("header", { className: "header", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "brand", children: [
       /* @__PURE__ */ jsxDEV("span", { className: "brand-mark", children: "T" }, void 0, false, {
@@ -2864,7 +2931,7 @@ function cap3(s) {
 function Shell() {
   const [view, setView] = useState7("floorplan");
   const [theme, setTheme] = useState7(getSavedTheme);
-  useEffect6(() => {
+  useEffect7(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try {
       window.localStorage.setItem(THEME_KEY, theme);
