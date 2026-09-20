@@ -263,10 +263,12 @@ function applyOptimistic(state, action) {
         items: o.items.map((it, i) => (i === action.index ? { ...it, done: !!action.done } : it)),
       }));
 
-    case "SET_TABLE_CAPACITY":
+    case "UPDATE_TABLE":
       return {
         ...state,
-        tables: state.tables.map((t) => (t.id === action.id ? { ...t, capacity: action.capacity } : t)),
+        tables: state.tables.map((t) =>
+          t.id === action.id ? { ...t, name: action.name, zone: action.zone, capacity: action.capacity } : t
+        ),
       };
 
     case "SEND_TO_KITCHEN":
@@ -435,8 +437,11 @@ async function runAction(action, state) {
       await supabase.from("tables").update({ name: action.name }).eq("id", action.id);
       return;
 
-    case "SET_TABLE_CAPACITY":
-      await supabase.from("tables").update({ capacity: action.capacity }).eq("id", action.id);
+    case "UPDATE_TABLE":
+      await supabase
+        .from("tables")
+        .update({ name: action.name, zone: action.zone, capacity: action.capacity })
+        .eq("id", action.id);
       return;
 
     case "DELETE_TABLE":
