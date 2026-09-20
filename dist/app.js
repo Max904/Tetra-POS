@@ -2128,7 +2128,7 @@ function SettingsView() {
         lineNumber: 10,
         columnNumber: 11
       }, this),
-      /* @__PURE__ */ jsxDEV("p", { className: "hint", children: "Manage menu, stock, staff and floor plan." }, void 0, false, {
+      /* @__PURE__ */ jsxDEV("p", { className: "hint", children: "Manage menu, staff and floor plan." }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 11,
         columnNumber: 11
@@ -2156,11 +2156,6 @@ function SettingsView() {
       /* @__PURE__ */ jsxDEV(FloorManager, {}, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 17,
-        columnNumber: 9
-      }, this),
-      /* @__PURE__ */ jsxDEV(InventoryPanel, {}, void 0, false, {
-        fileName: "<stdin>",
-        lineNumber: 18,
         columnNumber: 9
       }, this),
       /* @__PURE__ */ jsxDEV(TimerSettings, {}, void 0, false, {}, this)
@@ -2475,11 +2470,6 @@ function stockBadge(stock) {
   if (stock <= LOW_STOCK) return "low";
   return "ok";
 }
-function stockBadgeInfo(stock) {
-  const cls = stockBadge(stock);
-  const label = cls === "out" ? "Out of stock" : cls === "low" ? "Low stock" : "In stock";
-  return { cls, label };
-}
 function StaffManager() {
   const { state, dispatch } = useStore();
   const [name, setName] = useState6("");
@@ -2706,52 +2696,6 @@ function FloorManager() {
   ] }, void 0, true, {
     fileName: "<stdin>",
     lineNumber: 157,
-    columnNumber: 5
-  }, this);
-}
-function InventoryPanel() {
-  const { state } = useStore();
-  return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
-    /* @__PURE__ */ jsxDEV("h2", { children: "Inventory" }, void 0, false, {
-      fileName: "<stdin>",
-      lineNumber: 198,
-      columnNumber: 7
-    }, this),
-    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: state.menu.map((m) => {
-      const b = stockBadgeInfo(m.stock);
-      return /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
-        /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: /* @__PURE__ */ jsxDEV("span", { className: "pl-name", children: m.name }, void 0, false, {
-          fileName: "<stdin>",
-          lineNumber: 204,
-          columnNumber: 41
-        }, this) }, void 0, false, {
-          fileName: "<stdin>",
-          lineNumber: 204,
-          columnNumber: 15
-        }, this),
-        /* @__PURE__ */ jsxDEV("span", { className: `badge ${b.cls}`, children: b.label }, void 0, false, {
-          fileName: "<stdin>",
-          lineNumber: 205,
-          columnNumber: 15
-        }, this),
-        /* @__PURE__ */ jsxDEV("span", { className: "pl-stock", "data-kind": b.cls, children: m.stock }, void 0, false, {
-          fileName: "<stdin>",
-          lineNumber: 206,
-          columnNumber: 15
-        }, this)
-      ] }, m.id, true, {
-        fileName: "<stdin>",
-        lineNumber: 203,
-        columnNumber: 13
-      }, this);
-    }) }, void 0, false, {
-      fileName: "<stdin>",
-      lineNumber: 199,
-      columnNumber: 7
-    }, this)
-  ] }, void 0, true, {
-    fileName: "<stdin>",
-    lineNumber: 197,
     columnNumber: 5
   }, this);
 }
