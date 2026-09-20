@@ -43,4 +43,18 @@ function playReadyBell() {
   }
 }
 
-export { playReadyBell };
+// Three quick beeps + a higher note: "Sale" — the waiter is telling the
+// kitchen/bar to start a course. Called only from kitchen/bar devices.
+function playSaleAlert() {
+  try {
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    tone(ctx, 988, now, 0.12, 0.25);
+    tone(ctx, 988, now + 0.18, 0.12, 0.25);
+    tone(ctx, 1318.5, now + 0.36, 0.3, 0.25);
+  } catch {
+    // Audio can be blocked until the first user gesture — fail silently.
+  }
+}
+
+export { playReadyBell, playSaleAlert };
