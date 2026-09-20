@@ -397,7 +397,8 @@ function TicketPanel({ order, canEdit }) {
                 /* @__PURE__ */ jsxDEV("span", { className: "ti-name", children: [
                   it.qty,
                   "\xD7 ",
-                  it.name
+                  it.name,
+                  it.ready && jsxDEV("span", { className: "ti-ready", children: "\u2713 Listo" })
                 ] }, void 0, true, {}, this),
                 /* @__PURE__ */ jsxDEV("span", { className: "ti-price", children: [
                   "$",
