@@ -2333,13 +2333,31 @@ function FloorManager() {
   const [name, setName] = useState6("");
   const [zone, setZone] = useState6("Main");
   const [caps, setCaps] = useState6("4");
+  const [editing, setEditing] = useState6(null);
+  const resetForm = () => {
+    setEditing(null);
+    setName("");
+    setZone("Main");
+    setCaps("4");
+  };
   const add = () => {
     const n = name.trim();
-    if (n) {
-      dispatch({ type: "ADD_TABLE", name: n, zone, capacity: parseInt(caps, 10) || 4 });
-      setName("");
+    if (!n) return;
+    const capacity = Math.min(20, Math.max(1, parseInt(caps, 10) || 4));
+    if (editing) {
+      dispatch({ type: "UPDATE_TABLE", id: editing, name: n, zone, capacity });
+    } else {
+      dispatch({ type: "ADD_TABLE", name: n, zone, capacity });
     }
+    resetForm();
   };
+  const startEdit = (tb) => {
+    setEditing(tb.id);
+    setName(tb.name);
+    setZone(tb.zone);
+    setCaps(String(tb.capacity));
+  };
+  const zoneOptions = [.../* @__PURE__ */ new Set(["Main", "Patio", "Bar", "Window", zone])];
   return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
     /* @__PURE__ */ jsxDEV("h2", { children: "Floor Plan" }, void 0, false, {
       fileName: "<stdin>",
@@ -2353,7 +2371,7 @@ function FloorManager() {
           lineNumber: 161,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV("input", { type: "number", min: "1", value: caps, onChange: (e) => setCaps(e.target.value), title: "Seats" }, void 0, false, {
+        /* @__PURE__ */ jsxDEV("input", { type: "number", min: "1", max: "20", value: caps, onChange: (e) => setCaps(e.target.value), title: "Seats" }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 162,
           columnNumber: 11
@@ -2364,7 +2382,7 @@ function FloorManager() {
         columnNumber: 9
       }, this),
       /* @__PURE__ */ jsxDEV("div", { className: "form-row", children: [
-        /* @__PURE__ */ jsxDEV("select", { value: zone, onChange: (e) => setZone(e.target.value), children: ["Main", "Patio", "Bar", "Window"].map((z) => /* @__PURE__ */ jsxDEV("option", { children: z }, z, false, {
+        /* @__PURE__ */ jsxDEV("select", { value: zone, onChange: (e) => setZone(e.target.value), children: zoneOptions.map((z) => /* @__PURE__ */ jsxDEV("option", { children: z }, z, false, {
           fileName: "<stdin>",
           lineNumber: 167,
           columnNumber: 15
@@ -2373,13 +2391,14 @@ function FloorManager() {
           lineNumber: 165,
           columnNumber: 11
         }, this),
+        editing && jsxDEV("button", { className: "btn ghost", onClick: resetForm, children: "Cancel" }),
         /* @__PURE__ */ jsxDEV("button", { className: "btn primary", onClick: add, children: [
           /* @__PURE__ */ jsxDEV(Plus2, { size: 16 }, void 0, false, {
             fileName: "<stdin>",
             lineNumber: 171,
             columnNumber: 13
           }, this),
-          " Add table"
+          editing ? " Update table" : " Add table"
         ] }, void 0, true, {
           fileName: "<stdin>",
           lineNumber: 170,
@@ -2423,22 +2442,7 @@ function FloorManager() {
         lineNumber: 180,
         columnNumber: 13
       }, this),
-      /* @__PURE__ */ jsxDEV("button", { className: "pl-edit", onClick: () => {
-        const nn = prompt(`Rename ${t.name}:`, t.name);
-        if (nn && nn.trim()) dispatch({ type: "RENAME_TABLE", id: t.id, name: nn.trim() });
-      }, children: "Rename" }, void 0, false, {
-        fileName: "<stdin>",
-        lineNumber: 181,
-        columnNumber: 13
-      }, this),
-      jsxDEV("button", { className: "pl-edit", onClick: () => {
-        const raw = prompt(`Seats for ${t.name}:`, String(t.capacity));
-        if (raw === null) return;
-        const n = parseInt(raw, 10);
-        if (Number.isFinite(n) && n >= 1 && n <= 20 && n !== t.capacity) {
-          dispatch({ type: "SET_TABLE_CAPACITY", id: t.id, capacity: n });
-        }
-      }, children: "Seats" }),
+      jsxDEV("button", { className: "pl-edit", onClick: () => startEdit(t), children: "Edit" }),
       /* @__PURE__ */ jsxDEV("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_TABLE", id: t.id }), children: /* @__PURE__ */ jsxDEV(Trash22, { size: 15 }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 185,
