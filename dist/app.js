@@ -268,6 +268,11 @@ function applyOptimistic(state, action) {
         ...o,
         items: o.items.map((it, i) => i === action.index ? { ...it, done: !!action.done } : it)
       }));
+    case "SET_TABLE_CAPACITY":
+      return {
+        ...state,
+        tables: state.tables.map((t) => t.id === action.id ? { ...t, capacity: action.capacity } : t)
+      };
     case "SEND_TO_KITCHEN":
       return withOrder(state, action.orderId, (o) => {
         if (!o.items.length) return o;
@@ -405,6 +410,9 @@ async function runAction(action, state) {
       return;
     case "RENAME_TABLE":
       await supabase.from("tables").update({ name: action.name }).eq("id", action.id);
+      return;
+    case "SET_TABLE_CAPACITY":
+      await supabase.from("tables").update({ capacity: action.capacity }).eq("id", action.id);
       return;
     case "DELETE_TABLE":
       await supabase.from("tables").delete().eq("id", action.id);
