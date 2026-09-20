@@ -463,12 +463,16 @@ async function runAction(action, state) {
       return;
     case "ADD_TO_ORDER": {
       const seat = action.seat ?? null;
-      const order = state.orders.find((o) => o.id === action.orderId);
-      const existing = order?.items.find((it) => it.menuId === action.menuId && (it.seat ?? null) === seat);
+      let lookup = supabase.from("order_items").select("qty").eq("order_id", action.orderId).eq("menu_id", action.menuId);
+      lookup = seat === null ? lookup.is("seat", null) : lookup.eq("seat", seat);
+      const { data: found, error: lookupErr } = await lookup.limit(1);
+      if (lookupErr) throw lookupErr;
+      const existing = found && found[0];
       if (existing) {
         let q = supabase.from("order_items").update({ qty: existing.qty + 1 }).eq("order_id", action.orderId).eq("menu_id", action.menuId);
         q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
-        await q;
+        const { error: updErr } = await q;
+        if (updErr) throw updErr;
       } else {
         await supabase.from("order_items").insert({
           order_id: action.orderId,
@@ -608,7 +612,14 @@ function StoreProvider({ children }) {
   const stateRef = useRef(state);
   stateRef.current = state;
   const refreshTimer = useRef(null);
+  const writeQueue = useRef(Promise.resolve());
+  const pendingWrites = useRef(0);
+  const refreshWanted = useRef(false);
   const refreshNow = useCallback(async () => {
+    if (pendingWrites.current > 0) {
+      refreshWanted.current = true;
+      return;
+    }
     try {
       const data = await fetchAll();
       stateRef.current = data;
@@ -635,9 +646,16 @@ function StoreProvider({ children }) {
       const optimistic = applyOptimistic(current, act);
       stateRef.current = optimistic;
       setState(optimistic);
-      runAction(act, current).catch((err) => {
+      pendingWrites.current += 1;
+      writeQueue.current = writeQueue.current.then(() => runAction(act, current)).catch((err) => {
         console.error("Supabase write failed:", act.type, err);
-        refreshNow();
+        refreshWanted.current = true;
+      }).then(() => {
+        pendingWrites.current -= 1;
+        if (pendingWrites.current === 0 && refreshWanted.current) {
+          refreshWanted.current = false;
+          refreshNow();
+        }
       });
     },
     [refreshNow]
