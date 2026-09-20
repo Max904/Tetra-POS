@@ -133,7 +133,13 @@ function KdsView() {
         }, this),
         /* @__PURE__ */ jsxDEV("div", { className: "k-groups", children: groupByCategory(o.items, state.menu, state.categories).map((group) => /* @__PURE__ */ jsxDEV("div", { className: "k-cat-group", children: [
           /* @__PURE__ */ jsxDEV("span", { className: "k-cat-label", children: group.cat }, void 0, false, {}, this),
-          /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", { children: [
+          /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", {
+            className: `k-item ${it.done ? "done" : ""}`,
+            role: "checkbox",
+            "aria-checked": !!it.done,
+            onClick: () => dispatch({ type: "TOGGLE_ITEM_DONE", orderId: o.id, index: it.index, done: !it.done }),
+            children: [
+            jsxDEV("span", { className: "k-check", children: it.done && jsxDEV(Check, { size: 14, strokeWidth: 3 }) }),
             /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
               it.qty,
               "\xD7"
