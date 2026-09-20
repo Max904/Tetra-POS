@@ -18,6 +18,7 @@ import {
 import { StoreProvider, useStore, useOrdersByTable } from "./store.js";
 import { getDeviceRole, setDeviceRole } from "./deviceRole.js";
 import { useReadyAlerts } from "./useReadyAlerts.js";
+import { useSaleAlerts } from "./useSaleAlerts.js";
 import FloorPlanView from "./views/floorplan.jsx";
 import RegisterView from "./views/register.jsx";
 import KdsView from "./views/kds.jsx";
@@ -134,6 +135,7 @@ function Header({ view, setView, theme, setTheme }) {
   // Header is always mounted — that's what lets a waiter walking around on
   // the Floor Plan or Register view still hear the bell.
   const readyOrders = useReadyAlerts(state.orders, role);
+  useSaleAlerts(state.orders, state.menu, role);
   return /* @__PURE__ */ jsxDEV("header", { className: "header", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "brand", children: [
       /* @__PURE__ */ jsxDEV("span", { className: "brand-mark", children: "T" }, void 0, false, {
