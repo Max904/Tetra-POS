@@ -312,6 +312,31 @@ function TicketPanel({ order, canEdit }) {
       columnNumber: 7
     }, this);
   }
+  // "Sale" strip: once the order has gone to the kitchen, the waiter can tell
+  // the kitchen/bar to start a whole category (e.g. Mains) with one tap.
+  const catOfItem = (it) => state.menu.find((m) => m.id === it.menuId)?.category || "Other";
+  const saleGroups = [...state.categories, "Other"]
+    .map((cat) => ({
+      cat,
+      indices: items.map((it, i) => (catOfItem(it) === cat ? i : -1)).filter((i) => i >= 0),
+    }))
+    .filter((g) => g.indices.length > 0);
+  const saleStrip = order.status !== "new" && saleGroups.length > 0 && jsxDEV("div", {
+    className: "sale-strip",
+    children: [
+      jsxDEV("span", { className: "sale-label", children: "Sale" }),
+      ...saleGroups.map((g) => {
+        const fired = g.indices.every((i) => items[i].sale);
+        return jsxDEV("button", {
+          className: `sale-btn ${fired ? "sent" : ""}`,
+          disabled: fired,
+          title: fired ? "Cocina/barra ya fue avisada" : `Avisar que salga: ${g.cat}`,
+          onClick: () => dispatch({ type: "SET_ITEMS_SALE", orderId: order.id, indices: g.indices, sale: true }),
+          children: fired ? `\u2713 ${g.cat}` : g.cat
+        }, g.cat);
+      })
+    ]
+  });
   return /* @__PURE__ */ jsxDEV("aside", { className: "ticket", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "ticket-head", children: [
       /* @__PURE__ */ jsxDEV("div", { children: [
@@ -460,6 +485,7 @@ function TicketPanel({ order, canEdit }) {
       lineNumber: 137,
       columnNumber: 7
     }, this),
+    saleStrip,
     /* @__PURE__ */ jsxDEV("div", { className: "ticket-totals", children: [
       /* @__PURE__ */ jsxDEV("div", { className: "tl", children: [
         /* @__PURE__ */ jsxDEV("span", { children: "Subtotal" }, void 0, false, {
