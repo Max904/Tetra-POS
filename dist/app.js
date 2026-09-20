@@ -109,7 +109,11 @@ async function fetchAll() {
       name: it.name,
       price: Number(it.price),
       qty: it.qty,
-      note: it.note || ""
+      note: it.note || "",
+      // Which guest at the table this line belongs to (1-based), or null
+      // for a shared/unassigned line. Lets the cart be split by seat for
+      // per-guest ordering and, eventually, per-guest billing.
+      seat: it.seat ?? null
     });
   }
   const stationById = {};
@@ -228,9 +232,10 @@ function applyOptimistic(state, action) {
     case "SET_ACTIVE_TABLE":
       return { ...state, activeOrderId: null };
     case "ADD_TO_ORDER": {
+      const seat = action.seat ?? null;
       const next = withOrder(state, action.orderId, (o) => {
-        const idx = o.items.findIndex((it) => it.menuId === action.menuId);
-        const items = idx >= 0 ? o.items.map((it, i) => i === idx ? { ...it, qty: it.qty + 1 } : it) : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "" }];
+        const idx = o.items.findIndex((it) => it.menuId === action.menuId && (it.seat ?? null) === seat);
+        const items = idx >= 0 ? o.items.map((it, i) => i === idx ? { ...it, qty: it.qty + 1 } : it) : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "", seat }];
         return { ...o, items };
       });
       return {
@@ -249,6 +254,11 @@ function applyOptimistic(state, action) {
       return withOrder(state, action.orderId, (o) => ({
         ...o,
         items: o.items.map((it, i) => i === action.index ? { ...it, note: action.note } : it)
+      }));
+    case "SET_ITEM_SEAT":
+      return withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => i === action.index ? { ...it, seat: action.seat ?? null } : it)
       }));
     case "SEND_TO_KITCHEN":
       return withOrder(state, action.orderId, (o) => {
@@ -411,10 +421,13 @@ async function runAction(action, state) {
       await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
       return;
     case "ADD_TO_ORDER": {
+      const seat = action.seat ?? null;
       const order = state.orders.find((o) => o.id === action.orderId);
-      const existing = order?.items.find((it) => it.menuId === action.menuId);
+      const existing = order?.items.find((it) => it.menuId === action.menuId && (it.seat ?? null) === seat);
       if (existing) {
-        await supabase.from("order_items").update({ qty: existing.qty + 1 }).eq("order_id", action.orderId).eq("menu_id", action.menuId);
+        let q = supabase.from("order_items").update({ qty: existing.qty + 1 }).eq("order_id", action.orderId).eq("menu_id", action.menuId);
+        q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+        await q;
       } else {
         await supabase.from("order_items").insert({
           order_id: action.orderId,
@@ -422,7 +435,8 @@ async function runAction(action, state) {
           name: action.name,
           price: action.price,
           qty: 1,
-          note: ""
+          note: "",
+          seat
         });
       }
       const menuItem = state.menu.find((m) => m.id === action.menuId);
@@ -435,10 +449,15 @@ async function runAction(action, state) {
       const order = state.orders.find((o) => o.id === action.orderId);
       const item = order?.items[action.index];
       if (!item) return;
+      const seat = item.seat ?? null;
       if (action.qty <= 0) {
-        await supabase.from("order_items").delete().eq("order_id", action.orderId).eq("menu_id", item.menuId);
+        let q = supabase.from("order_items").delete().eq("order_id", action.orderId).eq("menu_id", item.menuId);
+        q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+        await q;
       } else {
-        await supabase.from("order_items").update({ qty: action.qty }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+        let q = supabase.from("order_items").update({ qty: action.qty }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+        q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+        await q;
       }
       return;
     }
@@ -446,7 +465,21 @@ async function runAction(action, state) {
       const order = state.orders.find((o) => o.id === action.orderId);
       const item = order?.items[action.index];
       if (!item) return;
-      await supabase.from("order_items").update({ note: action.note }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      const seat = item.seat ?? null;
+      let q = supabase.from("order_items").update({ note: action.note }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+      await q;
+      return;
+    }
+    case "SET_ITEM_SEAT": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      const oldSeat = item.seat ?? null;
+      const newSeat = action.seat ?? null;
+      let q = supabase.from("order_items").update({ seat: newSeat }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      q = oldSeat === null ? q.is("seat", null) : q.eq("seat", oldSeat);
+      await q;
       return;
     }
     case "SEND_TO_KITCHEN": {
