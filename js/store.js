@@ -28,6 +28,32 @@ function stationOf(state, menuId) {
   return state.menu.find((m) => m.id === menuId)?.station || "kitchen";
 }
 
+// ---------- table ordering ----------
+// Tables carry a `sort_order` (tables.sort_order column). The Floor Plan and
+// the Admin list both follow it, grouped by zone.
+function sortTables(rows) {
+  return [...rows].sort(
+    (a, b) =>
+      (a.sort_order ?? 1e9) - (b.sort_order ?? 1e9) || String(a.name).localeCompare(String(b.name))
+  );
+}
+
+// Moves table `id` one step (-1 = earlier, +1 = later) among the tables of
+// ITS OWN zone, then renumbers everything 0..n-1 so ties/nulls can't linger.
+function reorderTables(tables, id, direction) {
+  const ordered = sortTables(tables);
+  const me = ordered.find((t) => t.id === id);
+  if (!me) return null;
+  const sameZone = ordered.filter((t) => t.zone === me.zone);
+  const pos = sameZone.findIndex((t) => t.id === id);
+  const other = sameZone[pos + direction];
+  if (!other) return null;
+  const a = ordered.indexOf(me);
+  const b = ordered.indexOf(other);
+  [ordered[a], ordered[b]] = [ordered[b], ordered[a]];
+  return ordered.map((t, i) => ({ ...t, sort_order: i }));
+}
+
 // ---------- fetch + shape everything into the state object the views expect ----------
 
 async function fetchAll() {
@@ -132,7 +158,7 @@ async function fetchAll() {
     staff: staffNames,
     categories: (categoryRows || []).map((c) => c.name),
     menu: (menuRows || []).map((m) => ({ ...m, price: Number(m.price) })),
-    tables: tableRows || [],
+    tables: sortTables(tableRows || []),
     orders,
     currentStaff: appRow.current_staff || staffNames[0] || "",
     activeOrderId: appRow.active_order_id || null,
@@ -280,6 +306,11 @@ function applyOptimistic(state, action) {
         ...o,
         items: o.items.map((it, i) => (action.indices.includes(i) ? { ...it, ready: !!action.ready } : it)),
       }));
+
+    case "MOVE_TABLE": {
+      const next = reorderTables(state.tables, action.id, action.direction);
+      return next ? { ...state, tables: next } : state;
+    }
 
     case "UPDATE_TABLE":
       return {
@@ -448,6 +479,7 @@ async function runAction(action, state) {
         name: action.name,
         zone: action.zone,
         capacity: action.capacity,
+        sort_order: state.tables.reduce((m, t) => Math.max(m, t.sort_order ?? -1), -1) + 1,
       });
       return;
 
@@ -489,6 +521,19 @@ async function runAction(action, state) {
             .eq("menu_id", item.menuId);
           return seat === null ? q.is("seat", null) : q.eq("seat", seat);
         })
+      );
+      const failed = results.find((r) => r.error);
+      if (failed) throw failed.error;
+      return;
+    }
+
+    case "MOVE_TABLE": {
+      const next = reorderTables(state.tables, action.id, action.direction);
+      if (!next) return;
+      const before = new Map(state.tables.map((t) => [t.id, t.sort_order]));
+      const changed = next.filter((t) => before.get(t.id) !== t.sort_order);
+      const results = await Promise.all(
+        changed.map((t) => supabase.from("tables").update({ sort_order: t.sort_order }).eq("id", t.id))
       );
       const failed = results.find((r) => r.error);
       if (failed) throw failed.error;
