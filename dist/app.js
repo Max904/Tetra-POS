@@ -1811,23 +1811,30 @@ function BarView() {
         ] }, void 0, true, {}, this),
         /* @__PURE__ */ jsxDEV("div", { className: "k-groups", children: groupByCategory2(o.items, state.menu, state.categories).map((group) => /* @__PURE__ */ jsxDEV("div", { className: "k-cat-group", children: [
           /* @__PURE__ */ jsxDEV("span", { className: "k-cat-label", children: group.cat }, void 0, false, {}, this),
-          /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", { children: [
-            /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
-              it.qty,
-              "\xD7"
-            ] }, void 0, true, {}, this),
-            /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
-              /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
-              it.seat != null && /* @__PURE__ */ jsxDEV("span", { className: "k-seat", children: [
-                /* @__PURE__ */ jsxDEV(Users2, { size: 12 }, void 0, false, {}, this),
-                `Asiento ${it.seat}`
+          /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", {
+            className: `k-item ${it.done ? "done" : ""}`,
+            role: "checkbox",
+            "aria-checked": !!it.done,
+            onClick: () => dispatch({ type: "TOGGLE_ITEM_DONE", orderId: o.id, index: it.index, done: !it.done }),
+            children: [
+              jsxDEV("span", { className: "k-check", children: it.done && jsxDEV(Check2, { size: 14, strokeWidth: 3 }) }),
+              /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
+                it.qty,
+                "\xD7"
               ] }, void 0, true, {}, this),
-              it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
-                /* @__PURE__ */ jsxDEV(StickyNote2, { size: 12 }, void 0, false, {}, this),
-                it.note
+              /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
+                /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
+                it.seat != null && /* @__PURE__ */ jsxDEV("span", { className: "k-seat", children: [
+                  /* @__PURE__ */ jsxDEV(Users2, { size: 12 }, void 0, false, {}, this),
+                  `Asiento ${it.seat}`
+                ] }, void 0, true, {}, this),
+                it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
+                  /* @__PURE__ */ jsxDEV(StickyNote2, { size: 12 }, void 0, false, {}, this),
+                  it.note
+                ] }, void 0, true, {}, this)
               ] }, void 0, true, {}, this)
-            ] }, void 0, true, {}, this)
-          ] }, i, true, {}, this)) }, void 0, false, {}, this)
+            ]
+          }, i, true, {}, this)) }, void 0, false, {}, this)
         ] }, group.cat, true, {}, this)) }, void 0, false, {}, this),
         /* @__PURE__ */ jsxDEV("footer", { className: "k-actions", children: [
           o.barStatus === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "bar", status: "preparing" }), children: [
