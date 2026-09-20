@@ -165,7 +165,7 @@ function KdsView() {
                 /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {}, this),
                 it.note
               ] }, void 0, true, {}, this)
-            ] }, void 0, true, {}, this)
+            ] }, void 0, true, {}, this),
             jsxDEV("button", {
               className: `k-send item ${it.ready ? "sent" : ""}`,
               title: it.ready ? "Quitar aviso a garzones" : "Avisar a garzones",
