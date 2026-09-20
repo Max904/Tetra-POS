@@ -1,6 +1,6 @@
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { useState } from "react";
-import { Plus, Trash2, User, Square, ChefHat, Beer, ImageOff, Upload, Loader2, Timer, Send } from "lucide-react";
+import { Plus, Trash2, User, Square, ChefHat, Beer, ImageOff, Upload, Loader2, Timer, Send, ChevronUp, ChevronDown } from "lucide-react";
 import { useStore, LOW_STOCK } from "./../store.js";
 import { supabase, MENU_IMAGE_BUCKET, deleteMenuImagePath, deleteMenuImageByUrl } from "./../supabaseClient.js";
 
@@ -498,6 +498,11 @@ function FloorManager() {
     setZone(tb.zone);
     setCaps(String(tb.capacity));
   };
+  // Same order the Floor Plan uses: zones by first appearance, tables in
+  // their saved order inside each zone.
+  const zoneNames = [...new Set(state.tables.map((tb) => tb.zone))];
+  const orderedTables = zoneNames.flatMap((z) => state.tables.filter((tb) => tb.zone === z));
+  const zoneList = (tb) => state.tables.filter((x) => x.zone === tb.zone);
   // Keep the table's current zone selectable even if it isn't one of the presets.
   const zoneOptions = [...new Set(["Main", "Patio", "Bar", "Window", zone])];
   return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
@@ -556,7 +561,7 @@ function FloorManager() {
       lineNumber: 159,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: state.tables.map((t) => /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: orderedTables.map((t) => /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
       /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: [
         /* @__PURE__ */ jsxDEV(Square, { size: 14 }, void 0, false, {
           fileName: "<stdin>",
@@ -584,6 +589,20 @@ function FloorManager() {
         lineNumber: 180,
         columnNumber: 13
       }, this),
+      jsxDEV("button", {
+        className: "pl-edit pl-move",
+        title: "Mover antes",
+        disabled: zoneList(t)[0].id === t.id,
+        onClick: () => dispatch({ type: "MOVE_TABLE", id: t.id, direction: -1 }),
+        children: jsxDEV(ChevronUp, { size: 15 })
+      }),
+      jsxDEV("button", {
+        className: "pl-edit pl-move",
+        title: "Mover despu\u00e9s",
+        disabled: zoneList(t)[zoneList(t).length - 1].id === t.id,
+        onClick: () => dispatch({ type: "MOVE_TABLE", id: t.id, direction: 1 }),
+        children: jsxDEV(ChevronDown, { size: 15 })
+      }),
       jsxDEV("button", { className: "pl-edit", onClick: () => startEdit(t), children: "Edit" }),
       /* @__PURE__ */ jsxDEV("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_TABLE", id: t.id }), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {
         fileName: "<stdin>",
