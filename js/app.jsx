@@ -13,7 +13,8 @@ import {
   ChevronDown,
   LayoutDashboard,
   Bell,
-  Users
+  Users,
+  Package
 } from "lucide-react";
 import { StoreProvider, useStore, useOrdersByTable } from "./store.js";
 import { getDeviceRole, setDeviceRole } from "./deviceRole.js";
@@ -24,11 +25,13 @@ import RegisterView from "./views/register.jsx";
 import KdsView from "./views/kds.jsx";
 import BarView from "./views/bar.jsx";
 import SettingsView from "./views/settings.jsx";
+import InventoryView from "./views/inventory.jsx";
 const VIEWS = [
   { key: "floorplan", name: "Tables", icon: LayoutDashboard },
   { key: "register", name: "Register", icon: ShoppingCart },
   { key: "kds", name: "Kitchen", icon: ChefHat },
   { key: "bar", name: "Bar", icon: Beer },
+  { key: "inventory", name: "Inventory", icon: Package },
   { key: "settings", name: "Admin", icon: Printer }
 ];
 const THEME_KEY = "tetra:theme";
@@ -299,6 +302,11 @@ function Shell() {
         fileName: "<stdin>",
         lineNumber: 133,
         columnNumber: 28
+      }, this),
+      view === "inventory" && /* @__PURE__ */ jsxDEV(InventoryView, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 134,
+        columnNumber: 33
       }, this),
       view === "settings" && /* @__PURE__ */ jsxDEV(SettingsView, {}, void 0, false, {
         fileName: "<stdin>",
