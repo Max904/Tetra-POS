@@ -1,6 +1,6 @@
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { useEffect, useState } from "react";
-import { ChefHat, CookingPot, Check, X, Timer, StickyNote } from "lucide-react";
+import { ChefHat, CookingPot, Check, X, Timer, StickyNote, Users } from "lucide-react";
 import { useStore, useKitchenOrders } from "./../store.js";
 function useNow() {
   const [now, setNow] = useState(() => Date.now());
@@ -17,6 +17,19 @@ function fmt(ms) {
   const h = Math.floor(m / 60);
   if (h > 0) return `${h}:${String(m % 60).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
   return `${m}:${String(r).padStart(2, "0")}`;
+}
+// Same grouping bar.jsx uses for its drink tickets, so kitchen tickets get
+// the same category separators (Starters / Mains / Desserts, etc.) instead
+// of one flat list of items.
+function groupByCategory(items, menu, categories) {
+  const catOf = (menuId) => menu.find((m) => m.id === menuId)?.category || "Other";
+  const groups = {};
+  for (const it of items) {
+    const cat = catOf(it.menuId);
+    (groups[cat] ||= []).push(it);
+  }
+  const order = [...categories, "Other"];
+  return order.filter((c) => groups[c]).map((cat) => ({ cat, items: groups[cat] }));
 }
 function KdsView() {
   const { state, dispatch } = useStore();
@@ -118,47 +131,26 @@ function KdsView() {
           lineNumber: 51,
           columnNumber: 17
         }, this),
-        /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: o.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", { children: [
-          /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
-            it.qty,
-            "\xD7"
-          ] }, void 0, true, {
-            fileName: "<stdin>",
-            lineNumber: 65,
-            columnNumber: 23
-          }, this),
-          /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
-            /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {
-              fileName: "<stdin>",
-              lineNumber: 66,
-              columnNumber: 23
-            }, this),
-            it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
-              /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {
-                fileName: "<stdin>",
-                lineNumber: 68,
-                columnNumber: 39
-              }, this),
-              it.note
-            ] }, void 0, true, {
-              fileName: "<stdin>",
-              lineNumber: 68,
-              columnNumber: 37
-            }, this)
-          ] }, void 0, true, {
-            fileName: "<stdin>",
-            lineNumber: 66,
-            columnNumber: 23
-          }, this)
-        ] }, i, true, {
-          fileName: "<stdin>",
-          lineNumber: 64,
-          columnNumber: 21
-        }, this)) }, void 0, false, {
-          fileName: "<stdin>",
-          lineNumber: 62,
-          columnNumber: 17
-        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "k-groups", children: groupByCategory(o.items, state.menu, state.categories).map((group) => /* @__PURE__ */ jsxDEV("div", { className: "k-cat-group", children: [
+          /* @__PURE__ */ jsxDEV("span", { className: "k-cat-label", children: group.cat }, void 0, false, {}, this),
+          /* @__PURE__ */ jsxDEV("ul", { className: "k-items", children: group.items.map((it, i) => /* @__PURE__ */ jsxDEV("li", { children: [
+            /* @__PURE__ */ jsxDEV("span", { className: "k-qty", children: [
+              it.qty,
+              "\xD7"
+            ] }, void 0, true, {}, this),
+            /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
+              /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
+              it.seat != null && /* @__PURE__ */ jsxDEV("span", { className: "k-seat", children: [
+                /* @__PURE__ */ jsxDEV(Users, { size: 12 }, void 0, false, {}, this),
+                `Asiento ${it.seat}`
+              ] }, void 0, true, {}, this),
+              it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
+                /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {}, this),
+                it.note
+              ] }, void 0, true, {}, this)
+            ] }, void 0, true, {}, this)
+          ] }, i, true, {}, this)) }, void 0, false, {}, this)
+        ] }, group.cat, true, {}, this)) }, void 0, false, {}, this),
         /* @__PURE__ */ jsxDEV("footer", { className: "k-actions", children: [
           o.kitchenStatus === "sent" && /* @__PURE__ */ jsxDEV("button", { className: "ka preparing", onClick: () => dispatch({ type: "SET_KITCHEN", orderId: o.id, station: "kitchen", status: "preparing" }), children: [
             /* @__PURE__ */ jsxDEV(CookingPot, { size: 16 }, void 0, false, {
