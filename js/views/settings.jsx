@@ -582,6 +582,14 @@ function FloorManager() {
         lineNumber: 181,
         columnNumber: 13
       }, this),
+      jsxDEV("button", { className: "pl-edit", onClick: () => {
+        const raw = prompt(`Seats for ${t.name}:`, String(t.capacity));
+        if (raw === null) return;
+        const n = parseInt(raw, 10);
+        if (Number.isFinite(n) && n >= 1 && n <= 20 && n !== t.capacity) {
+          dispatch({ type: "SET_TABLE_CAPACITY", id: t.id, capacity: n });
+        }
+      }, children: "Seats" }),
       /* @__PURE__ */ jsxDEV("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_TABLE", id: t.id }), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {
         fileName: "<stdin>",
         lineNumber: 185,
