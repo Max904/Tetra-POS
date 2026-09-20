@@ -1425,3 +1425,34 @@ html[data-theme="light"] .kds-card.over {
     display: none;
   }
 }
+
+/* ---- per-item check-off on Kitchen / Bar tickets ---- */
+.k-items li.k-item {
+  cursor: pointer;
+  align-items: flex-start;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  padding: 4px 0;
+}
+.k-check {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background 0.12s, border-color 0.12s;
+}
+.k-item.done .k-check {
+  background: var(--green, #22c55e);
+  border-color: var(--green, #22c55e);
+}
+.k-item.done .k-qty,
+.k-item.done .k-line > span:first-child {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
