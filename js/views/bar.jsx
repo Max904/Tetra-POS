@@ -1,6 +1,6 @@
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { useEffect, useState } from "react";
-import { Beer, CookingPot, Check, X, Timer, StickyNote } from "lucide-react";
+import { Beer, CookingPot, Check, X, Timer, StickyNote, Users } from "lucide-react";
 import { useStore, useBarOrders } from "./../store.js";
 function useNow() {
   const [now, setNow] = useState(() => Date.now());
@@ -77,6 +77,10 @@ function BarView() {
             ] }, void 0, true, {}, this),
             /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
               /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
+              it.seat != null && /* @__PURE__ */ jsxDEV("span", { className: "k-seat", children: [
+                /* @__PURE__ */ jsxDEV(Users, { size: 12 }, void 0, false, {}, this),
+                `Asiento ${it.seat}`
+              ] }, void 0, true, {}, this),
               it.note && /* @__PURE__ */ jsxDEV("span", { className: "k-note", children: [
                 /* @__PURE__ */ jsxDEV(StickyNote, { size: 12 }, void 0, false, {}, this),
                 it.note
