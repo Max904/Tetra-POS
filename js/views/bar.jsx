@@ -93,7 +93,10 @@ function BarView() {
               "\xD7"
             ] }, void 0, true, {}, this),
             /* @__PURE__ */ jsxDEV("span", { className: "k-line", children: [
-              /* @__PURE__ */ jsxDEV("span", { children: it.name }, void 0, false, {}, this),
+              jsxDEV("span", { className: "k-name-row", children: [
+                jsxDEV("span", { children: it.name }),
+                it.sale && jsxDEV("span", { className: "k-sale", children: "\u00a1SALE!" })
+              ] }),
               it.seat != null && /* @__PURE__ */ jsxDEV("span", { className: "k-seat", children: [
                 /* @__PURE__ */ jsxDEV(Users, { size: 12 }, void 0, false, {}, this),
                 `Asiento ${it.seat}`
