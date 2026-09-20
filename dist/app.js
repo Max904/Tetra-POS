@@ -16,7 +16,7 @@ import {
   Moon,
   Clock,
   User as User2,
-  ChevronDown as ChevronDown2,
+  ChevronDown as ChevronDown3,
   LayoutDashboard,
   Bell as Bell3,
   Users as Users3,
@@ -2147,7 +2147,7 @@ function BarView() {
 
 // js/views/settings.jsx
 import { useState as useState6 } from "react";
-import { Plus as Plus2, Trash2 as Trash22, User, Square, ChefHat as ChefHat3, Beer as Beer2, ImageOff as ImageOff2, Upload, Loader2, Timer as Timer3, Send } from "lucide-react";
+import { Plus as Plus2, Trash2 as Trash22, User, Square, ChefHat as ChefHat3, Beer as Beer2, ImageOff as ImageOff2, Upload, Loader2, Timer as Timer3, Send, ChevronUp, ChevronDown as ChevronDown2 } from "lucide-react";
 async function uploadMenuImage(file) {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -2625,6 +2625,9 @@ function FloorManager() {
     setZone(tb.zone);
     setCaps(String(tb.capacity));
   };
+  const zoneNames = [...new Set(state.tables.map((tb) => tb.zone))];
+  const orderedTables = zoneNames.flatMap((z) => state.tables.filter((tb) => tb.zone === z));
+  const zoneList = (tb) => state.tables.filter((x) => x.zone === tb.zone);
   const zoneOptions = [.../* @__PURE__ */ new Set(["Main", "Patio", "Bar", "Window", zone])];
   return /* @__PURE__ */ jsxDEV("section", { className: "panel", children: [
     /* @__PURE__ */ jsxDEV("h2", { children: "Floor Plan" }, void 0, false, {
@@ -2682,7 +2685,7 @@ function FloorManager() {
       lineNumber: 159,
       columnNumber: 7
     }, this),
-    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: state.tables.map((t) => /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "panel-list", children: orderedTables.map((t) => /* @__PURE__ */ jsxDEV("div", { className: "pl-row", children: [
       /* @__PURE__ */ jsxDEV("span", { className: "pl-main", children: [
         /* @__PURE__ */ jsxDEV(Square, { size: 14 }, void 0, false, {
           fileName: "<stdin>",
@@ -2710,6 +2713,20 @@ function FloorManager() {
         lineNumber: 180,
         columnNumber: 13
       }, this),
+      jsxDEV("button", {
+        className: "pl-edit pl-move",
+        title: "Mover antes",
+        disabled: zoneList(t)[0].id === t.id,
+        onClick: () => dispatch({ type: "MOVE_TABLE", id: t.id, direction: -1 }),
+        children: jsxDEV(ChevronUp, { size: 15 })
+      }),
+      jsxDEV("button", {
+        className: "pl-edit pl-move",
+        title: "Mover despu\xE9s",
+        disabled: zoneList(t)[zoneList(t).length - 1].id === t.id,
+        onClick: () => dispatch({ type: "MOVE_TABLE", id: t.id, direction: 1 }),
+        children: jsxDEV(ChevronDown2, { size: 15 })
+      }),
       jsxDEV("button", { className: "pl-edit", onClick: () => startEdit(t), children: "Edit" }),
       /* @__PURE__ */ jsxDEV("button", { className: "pl-del", onClick: () => dispatch({ type: "DELETE_TABLE", id: t.id }), children: /* @__PURE__ */ jsxDEV(Trash22, { size: 15 }, void 0, false, {
         fileName: "<stdin>",
@@ -2857,7 +2874,7 @@ function RoleSwitch({ role, onChange }) {
             (r) => jsxDEV("option", { value: r, children: ROLE_LABELS[r] }, r)
           )
         }),
-        jsxDEV(ChevronDown2, { size: 14 })
+        jsxDEV(ChevronDown3, { size: 14 })
       ]
     }
   );
@@ -2966,7 +2983,7 @@ function Header({ view, setView, theme, setTheme }) {
           lineNumber: 96,
           columnNumber: 11
         }, this),
-        /* @__PURE__ */ jsxDEV(ChevronDown2, { size: 14 }, void 0, false, {
+        /* @__PURE__ */ jsxDEV(ChevronDown3, { size: 14 }, void 0, false, {
           fileName: "<stdin>",
           lineNumber: 103,
           columnNumber: 11
