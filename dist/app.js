@@ -2524,6 +2524,15 @@ var VIEWS = [
   { key: "bar", name: "Bar", icon: Beer3 },
   { key: "settings", name: "Admin", icon: Printer2 }
 ];
+var THEME_KEY = "tetra:theme";
+function getSavedTheme() {
+  try {
+    const saved = window.localStorage.getItem(THEME_KEY);
+    if (saved === "light" || saved === "dark") return saved;
+  } catch {
+  }
+  return document.documentElement.getAttribute("data-theme") || "dark";
+}
 function useClock() {
   const [now, setNow] = useState7(() => /* @__PURE__ */ new Date());
   useEffect6(() => {
@@ -2738,9 +2747,14 @@ function cap3(s) {
 }
 function Shell() {
   const [view, setView] = useState7("floorplan");
-  const [theme, setTheme] = useState7(
-    () => document.documentElement.getAttribute("data-theme") || "dark"
-  );
+  const [theme, setTheme] = useState7(getSavedTheme);
+  useEffect6(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      window.localStorage.setItem(THEME_KEY, theme);
+    } catch {
+    }
+  }, [theme]);
   return /* @__PURE__ */ jsxDEV("div", { className: "app", children: [
     /* @__PURE__ */ jsxDEV(Header, { view, setView, theme, setTheme }, void 0, false, {
       fileName: "<stdin>",
