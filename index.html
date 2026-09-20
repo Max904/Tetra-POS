@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tetra POS</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <script>
+    // Restore the saved theme before the CSS paints, so light-theme devices
+    // don't flash dark on reload. Key must match THEME_KEY in js/app.jsx.
+    try {
+      var t = localStorage.getItem("tetra:theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  </script>
   <link rel="stylesheet" href="css/style.css" />
   <script type="importmap">
   {
