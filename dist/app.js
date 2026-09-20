@@ -19,7 +19,8 @@ import {
   ChevronDown as ChevronDown2,
   LayoutDashboard,
   Bell as Bell3,
-  Users as Users3
+  Users as Users3,
+  Package
 } from "lucide-react";
 
 // js/store.js
@@ -2700,12 +2701,59 @@ function FloorManager() {
   }, this);
 }
 
+// js/views/inventory.jsx
+function stockBadge2(stock) {
+  if (stock <= 0) return "out";
+  if (stock <= LOW_STOCK) return "low";
+  return "ok";
+}
+function stockBadgeInfo(stock) {
+  const cls = stockBadge2(stock);
+  const label = cls === "out" ? "Out of stock" : cls === "low" ? "Low stock" : "In stock";
+  return { cls, label };
+}
+function InventoryView() {
+  const { state } = useStore();
+  return jsxDEV("div", {
+    className: "settings",
+    children: [
+      jsxDEV("div", {
+        className: "view-head",
+        children: jsxDEV("div", {
+          children: [
+            jsxDEV("h1", { children: "Inventory" }),
+            jsxDEV("p", { className: "hint", children: "Current stock for every menu item." })
+          ]
+        })
+      }),
+      jsxDEV("section", {
+        className: "panel",
+        children: jsxDEV("div", {
+          className: "panel-list",
+          children: state.menu.map((m) => {
+            const b = stockBadgeInfo(m.stock);
+            return jsxDEV("div", {
+              className: "pl-row",
+              children: [
+                jsxDEV("span", { className: "pl-main", children: jsxDEV("span", { className: "pl-name", children: m.name }) }),
+                jsxDEV("span", { className: `badge ${b.cls}`, children: b.label }),
+                jsxDEV("span", { className: "pl-stock", "data-kind": b.cls, children: m.stock })
+              ]
+            }, m.id);
+          })
+        })
+      })
+    ]
+  });
+}
+
 // js/app.jsx
 var VIEWS = [
   { key: "floorplan", name: "Tables", icon: LayoutDashboard },
   { key: "register", name: "Register", icon: ShoppingCart },
   { key: "kds", name: "Kitchen", icon: ChefHat4 },
   { key: "bar", name: "Bar", icon: Beer3 },
+  { key: "inventory", name: "Inventory", icon: Package },
   { key: "settings", name: "Admin", icon: Printer2 }
 ];
 var THEME_KEY = "tetra:theme";
@@ -2966,6 +3014,11 @@ function Shell() {
         fileName: "<stdin>",
         lineNumber: 133,
         columnNumber: 28
+      }, this),
+      view === "inventory" && /* @__PURE__ */ jsxDEV(InventoryView, {}, void 0, false, {
+        fileName: "<stdin>",
+        lineNumber: 134,
+        columnNumber: 33
       }, this),
       view === "settings" && /* @__PURE__ */ jsxDEV(SettingsView, {}, void 0, false, {
         fileName: "<stdin>",
