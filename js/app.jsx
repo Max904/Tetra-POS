@@ -30,6 +30,16 @@ const VIEWS = [
   { key: "bar", name: "Bar", icon: Beer },
   { key: "settings", name: "Admin", icon: Printer }
 ];
+const THEME_KEY = "tetra:theme";
+function getSavedTheme() {
+  try {
+    const saved = window.localStorage.getItem(THEME_KEY);
+    if (saved === "light" || saved === "dark") return saved;
+  } catch {
+    // localStorage unavailable (e.g. private mode) — fall through to default.
+  }
+  return document.documentElement.getAttribute("data-theme") || "dark";
+}
 function useClock() {
   const [now, setNow] = useState(() => /* @__PURE__ */ new Date());
   useEffect(() => {
@@ -250,9 +260,17 @@ function cap(s) {
 }
 function Shell() {
   const [view, setView] = useState("floorplan");
-  const [theme, setTheme] = useState(
-    () => document.documentElement.getAttribute("data-theme") || "dark"
-  );
+  const [theme, setTheme] = useState(getSavedTheme);
+  // Apply + remember the theme whenever it changes (also applies the saved
+  // one on first load). Stored per device, like the device role.
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      window.localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // can't persist — theme still works for this session.
+    }
+  }, [theme]);
   return /* @__PURE__ */ jsxDEV("div", { className: "app", children: [
     /* @__PURE__ */ jsxDEV(Header, { view, setView, theme, setTheme }, void 0, false, {
       fileName: "<stdin>",
