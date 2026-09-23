@@ -1149,7 +1149,6 @@ function RegisterView() {
   }, [state.menu, activeCat, query]);
   const menuInStock = state.menu.filter((m) => m.category === activeCat && m.stock > 0);
   const canEdit = !!order && order.status === "new";
-  const menuStockOf2 = (menuId) => state.menu.find((m) => m.id === menuId)?.stock ?? 0;
   const subtitle = order ? `${table?.name || "Unassigned"} \xB7 taken by ${order.staff}` : "Select a table from the Floor Plan to start";
   return /* @__PURE__ */ jsxDEV("div", { className: "register", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
@@ -1371,6 +1370,7 @@ function TicketPanel({ order, canEdit }) {
   const seatCount = table?.capacity > 1 ? table.capacity : 0;
   const hasSeats = items.some((it) => (it.seat ?? null) !== null);
   const seatGroups = groupItemsBySeat(items);
+  const menuStockOf = (menuId) => state.menu.find((m) => m.id === menuId)?.stock ?? 0;
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
