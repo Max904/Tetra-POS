@@ -1,198 +1,1037 @@
-Bien, ahora una cosita urgente que pille ahora, si hay 2 telefonos con garzones, garzon A esta haciendo la comanda para mesa 1, y garzon B esta tomando la comanda de mesa 2, garzon B se le actualiza su comanda con los datos de garzon A si estan haciendo una comanda al mismo tiempo
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { supabase, deleteMenuImageByUrl } from "./supabaseClient.js";
 
-No te puedo pasar todos los archivos, aqui va el contenido de los que no puedo:
+const LOW_STOCK = 5;
 
-/vendor/client.mjs
-/* esm.sh - react-dom@18.3.1/client */
-import*as __0$ from"./react-dom.mjs";var require=n=>{const e=m=>typeof m.default<"u"?m.default:m,c=m=>Object.assign({__esModule:true},m);switch(n){case"react-dom":return e(__0$);default:console.error('module "'+n+'" not found');return null;}};
-var R=Object.create;var c=Object.defineProperty;var l=Object.getOwnPropertyDescriptor;var y=Object.getOwnPropertyNames;var E=Object.getPrototypeOf,_=Object.prototype.hasOwnProperty;var f=(t=>typeof require<"u"?require:typeof Proxy<"u"?new Proxy(t,{get:(o,e)=>(typeof require<"u"?require:o)[e]}):t)(function(t){if(typeof require<"u")return require.apply(this,arguments);throw Error('Dynamic require of "'+t+'" is not supported')});var d=(t,o)=>()=>(o||t((o={exports:{}}).exports,o),o.exports);var m=(t,o,e,a)=>{if(o&&typeof o=="object"||typeof o=="function")for(let r of y(o))!_.call(t,r)&&r!==e&&c(t,r,{get:()=>o[r],enumerable:!(a=l(o,r))||a.enumerable});return t};var h=(t,o,e)=>(e=t!=null?R(E(t)):{},m(o||!t||!t.__esModule?c(e,"default",{value:t,enumerable:!0}):e,t));var u=d(i=>{"use strict";var s=f("react-dom");i.createRoot=s.createRoot,i.hydrateRoot=s.hydrateRoot;var C});var n=h(u()),{createRoot:O,hydrateRoot:g}=n,x=n.default??n;export{O as createRoot,x as default,g as hydrateRoot};
-//# sourceMappingURL=client.mjs.map
-
-/vendor/scheduler.mjs
-/* esm.sh - scheduler@0.23.2 */
-var __setImmediate$ = (cb, ...args) => ( { $t: setTimeout(cb, 0, ...args), [Symbol.dispose](){ clearTimeout(this.t) } });
-var V=Object.create;var B=Object.defineProperty;var U=Object.getOwnPropertyDescriptor;var X=Object.getOwnPropertyNames;var Z=Object.getPrototypeOf,$=Object.prototype.hasOwnProperty;var D=(e,n)=>()=>(n||e((n={exports:{}}).exports,n),n.exports);var ee=(e,n,t,l)=>{if(n&&typeof n=="object"||typeof n=="function")for(let i of X(n))!$.call(e,i)&&i!==t&&B(e,i,{get:()=>n[i],enumerable:!(l=U(n,i))||l.enumerable});return e};var ne=(e,n,t)=>(t=e!=null?V(Z(e)):{},ee(n||!e||!e.__esModule?B(t,"default",{value:e,enumerable:!0}):t,e));var K=D(r=>{"use strict";function L(e,n){var t=e.length;e.push(n);e:for(;0<t;){var l=t-1>>>1,i=e[l];if(0<g(i,n))e[l]=n,e[t]=i,t=l;else break e}}function o(e){return e.length===0?null:e[0]}function k(e){if(e.length===0)return null;var n=e[0],t=e.pop();if(t!==n){e[0]=t;e:for(var l=0,i=e.length,y=i>>>1;l<y;){var f=2*(l+1)-1,I=e[f],b=f+1,m=e[b];if(0>g(I,t))b<i&&0>g(m,I)?(e[l]=m,e[b]=t,l=b):(e[l]=I,e[f]=t,l=f);else if(b<i&&0>g(m,t))e[l]=m,e[b]=t,l=b;else break e}}return n}function g(e,n){var t=e.sortIndex-n.sortIndex;return t!==0?t:e.id-n.id}typeof performance=="object"&&typeof performance.now=="function"?(q=performance,r.unstable_now=function(){return q.now()}):(C=Date,O=C.now(),r.unstable_now=function(){return C.now()-O});var q,C,O,s=[],c=[],te=1,a=null,u=3,P=!1,_=!1,v=!1,z=typeof setTimeout=="function"?setTimeout:null,A=typeof clearTimeout=="function"?clearTimeout:null,W=typeof __setImmediate$<"u"?__setImmediate$:null;typeof navigator<"u"&&navigator.scheduling!==void 0&&navigator.scheduling.isInputPending!==void 0&&navigator.scheduling.isInputPending.bind(navigator.scheduling);function N(e){for(var n=o(c);n!==null;){if(n.callback===null)k(c);else if(n.startTime<=e)k(c),n.sortIndex=n.expirationTime,L(s,n);else break;n=o(c)}}function j(e){if(v=!1,N(e),!_)if(o(s)!==null)_=!0,M(F);else{var n=o(c);n!==null&&R(j,n.startTime-e)}}function F(e,n){_=!1,v&&(v=!1,A(d),d=-1),P=!0;var t=u;try{for(N(n),a=o(s);a!==null&&(!(a.expirationTime>n)||e&&!J());){var l=a.callback;if(typeof l=="function"){a.callback=null,u=a.priorityLevel;var i=l(a.expirationTime<=n);n=r.unstable_now(),typeof i=="function"?a.callback=i:a===o(s)&&k(s),N(n)}else k(s);a=o(s)}if(a!==null)var y=!0;else{var f=o(c);f!==null&&R(j,f.startTime-n),y=!1}return y}finally{a=null,u=t,P=!1}}var w=!1,h=null,d=-1,G=5,H=-1;function J(){return!(r.unstable_now()-H<G)}function E(){if(h!==null){var e=r.unstable_now();H=e;var n=!0;try{n=h(!0,e)}finally{n?p():(w=!1,h=null)}}else w=!1}var p;typeof W=="function"?p=function(){W(E)}:typeof MessageChannel<"u"?(T=new MessageChannel,Y=T.port2,T.port1.onmessage=E,p=function(){Y.postMessage(null)}):p=function(){z(E,0)};var T,Y;function M(e){h=e,w||(w=!0,p())}function R(e,n){d=z(function(){e(r.unstable_now())},n)}r.unstable_IdlePriority=5;r.unstable_ImmediatePriority=1;r.unstable_LowPriority=4;r.unstable_NormalPriority=3;r.unstable_Profiling=null;r.unstable_UserBlockingPriority=2;r.unstable_cancelCallback=function(e){e.callback=null};r.unstable_continueExecution=function(){_||P||(_=!0,M(F))};r.unstable_forceFrameRate=function(e){0>e||125<e?console.error("forceFrameRate takes a positive int between 0 and 125, forcing frame rates higher than 125 fps is not supported"):G=0<e?Math.floor(1e3/e):5};r.unstable_getCurrentPriorityLevel=function(){return u};r.unstable_getFirstCallbackNode=function(){return o(s)};r.unstable_next=function(e){switch(u){case 1:case 2:case 3:var n=3;break;default:n=u}var t=u;u=n;try{return e()}finally{u=t}};r.unstable_pauseExecution=function(){};r.unstable_requestPaint=function(){};r.unstable_runWithPriority=function(e,n){switch(e){case 1:case 2:case 3:case 4:case 5:break;default:e=3}var t=u;u=e;try{return n()}finally{u=t}};r.unstable_scheduleCallback=function(e,n,t){var l=r.unstable_now();switch(typeof t=="object"&&t!==null?(t=t.delay,t=typeof t=="number"&&0<t?l+t:l):t=l,e){case 1:var i=-1;break;case 2:i=250;break;case 5:i=1073741823;break;case 4:i=1e4;break;default:i=5e3}return i=t+i,e={id:te++,callback:n,priorityLevel:e,startTime:t,expirationTime:i,sortIndex:-1},t>l?(e.sortIndex=t,L(c,e),o(s)===null&&e===o(c)&&(v?(A(d),d=-1):v=!0,R(j,t-l))):(e.sortIndex=i,L(s,e),_||P||(_=!0,M(F))),e};r.unstable_shouldYield=J;r.unstable_wrapCallback=function(e){var n=u;return function(){var t=u;u=n;try{return e.apply(this,arguments)}finally{u=t}}}});var S=D((ie,Q)=>{"use strict";Q.exports=K()});var x=ne(S()),{unstable_now:ue,unstable_IdlePriority:ae,unstable_ImmediatePriority:oe,unstable_LowPriority:se,unstable_NormalPriority:ce,unstable_Profiling:fe,unstable_UserBlockingPriority:be,unstable_cancelCallback:_e,unstable_continueExecution:pe,unstable_forceFrameRate:ve,unstable_getCurrentPriorityLevel:de,unstable_getFirstCallbackNode:ye,unstable_next:me,unstable_pauseExecution:ge,unstable_requestPaint:he,unstable_runWithPriority:ke,unstable_scheduleCallback:Pe,unstable_shouldYield:we,unstable_wrapCallback:xe}=x,Ie=x.default??x;export{Ie as default,ae as unstable_IdlePriority,oe as unstable_ImmediatePriority,se as unstable_LowPriority,ce as unstable_NormalPriority,fe as unstable_Profiling,be as unstable_UserBlockingPriority,_e as unstable_cancelCallback,pe as unstable_continueExecution,ve as unstable_forceFrameRate,de as unstable_getCurrentPriorityLevel,ye as unstable_getFirstCallbackNode,me as unstable_next,ue as unstable_now,ge as unstable_pauseExecution,he as unstable_requestPaint,ke as unstable_runWithPriority,Pe as unstable_scheduleCallback,we as unstable_shouldYield,xe as unstable_wrapCallback};
-/*! Bundled license information:
-
-scheduler/cjs/scheduler.production.min.js:
-  (**
-   * @license React
-   * scheduler.production.min.js
-   *
-   * Copyright (c) Facebook, Inc. and its affiliates.
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE file in the root directory of this source tree.
-   *)
-*/
-//# sourceMappingURL=scheduler.mjs.map
-
-/vendor/react.mjs
-/* esm.sh - react@18.3.1 */
-var U=Object.create;var k=Object.defineProperty;var q=Object.getOwnPropertyDescriptor;var A=Object.getOwnPropertyNames;var M=Object.getPrototypeOf,z=Object.prototype.hasOwnProperty;var w=(e,t)=>()=>(t||e((t={exports:{}}).exports,t),t.exports);var B=(e,t,n,u)=>{if(t&&typeof t=="object"||typeof t=="function")for(let o of A(t))!z.call(e,o)&&o!==n&&k(e,o,{get:()=>t[o],enumerable:!(u=q(t,o))||u.enumerable});return e};var H=(e,t,n)=>(n=e!=null?U(M(e)):{},B(t||!e||!e.__esModule?k(n,"default",{value:e,enumerable:!0}):n,e));var L=w(r=>{"use strict";var y=Symbol.for("react.element"),W=Symbol.for("react.portal"),Y=Symbol.for("react.fragment"),G=Symbol.for("react.strict_mode"),J=Symbol.for("react.profiler"),K=Symbol.for("react.provider"),Q=Symbol.for("react.context"),X=Symbol.for("react.forward_ref"),Z=Symbol.for("react.suspense"),ee=Symbol.for("react.memo"),te=Symbol.for("react.lazy"),b=Symbol.iterator;function re(e){return e===null||typeof e!="object"?null:(e=b&&e[b]||e["@@iterator"],typeof e=="function"?e:null)}var x={isMounted:function(){return!1},enqueueForceUpdate:function(){},enqueueReplaceState:function(){},enqueueSetState:function(){}},O=Object.assign,I={};function p(e,t,n){this.props=e,this.context=t,this.refs=I,this.updater=n||x}p.prototype.isReactComponent={};p.prototype.setState=function(e,t){if(typeof e!="object"&&typeof e!="function"&&e!=null)throw Error("setState(...): takes an object of state variables to update or a function which returns an object of state variables.");this.updater.enqueueSetState(this,e,t,"setState")};p.prototype.forceUpdate=function(e){this.updater.enqueueForceUpdate(this,e,"forceUpdate")};function g(){}g.prototype=p.prototype;function S(e,t,n){this.props=e,this.context=t,this.refs=I,this.updater=n||x}var E=S.prototype=new g;E.constructor=S;O(E,p.prototype);E.isPureReactComponent=!0;var $=Array.isArray,P=Object.prototype.hasOwnProperty,R={current:null},T={key:!0,ref:!0,__self:!0,__source:!0};function D(e,t,n){var u,o={},s=null,f=null;if(t!=null)for(u in t.ref!==void 0&&(f=t.ref),t.key!==void 0&&(s=""+t.key),t)P.call(t,u)&&!T.hasOwnProperty(u)&&(o[u]=t[u]);var i=arguments.length-2;if(i===1)o.children=n;else if(1<i){for(var c=Array(i),a=0;a<i;a++)c[a]=arguments[a+2];o.children=c}if(e&&e.defaultProps)for(u in i=e.defaultProps,i)o[u]===void 0&&(o[u]=i[u]);return{$$typeof:y,type:e,key:s,ref:f,props:o,_owner:R.current}}function ne(e,t){return{$$typeof:y,type:e.type,key:t,ref:e.ref,props:e.props,_owner:e._owner}}function C(e){return typeof e=="object"&&e!==null&&e.$$typeof===y}function oe(e){var t={"=":"=0",":":"=2"};return"$"+e.replace(/[=:]/g,function(n){return t[n]})}var j=/\/+/g;function v(e,t){return typeof e=="object"&&e!==null&&e.key!=null?oe(""+e.key):t.toString(36)}function _(e,t,n,u,o){var s=typeof e;(s==="undefined"||s==="boolean")&&(e=null);var f=!1;if(e===null)f=!0;else switch(s){case"string":case"number":f=!0;break;case"object":switch(e.$$typeof){case y:case W:f=!0}}if(f)return f=e,o=o(f),e=u===""?"."+v(f,0):u,$(o)?(n="",e!=null&&(n=e.replace(j,"$&/")+"/"),_(o,t,n,"",function(a){return a})):o!=null&&(C(o)&&(o=ne(o,n+(!o.key||f&&f.key===o.key?"":(""+o.key).replace(j,"$&/")+"/")+e)),t.push(o)),1;if(f=0,u=u===""?".":u+":",$(e))for(var i=0;i<e.length;i++){s=e[i];var c=u+v(s,i);f+=_(s,t,n,c,o)}else if(c=re(e),typeof c=="function")for(e=c.call(e),i=0;!(s=e.next()).done;)s=s.value,c=u+v(s,i++),f+=_(s,t,n,c,o);else if(s==="object")throw t=String(e),Error("Objects are not valid as a React child (found: "+(t==="[object Object]"?"object with keys {"+Object.keys(e).join(", ")+"}":t)+"). If you meant to render a collection of children, use an array instead.");return f}function d(e,t,n){if(e==null)return e;var u=[],o=0;return _(e,u,"","",function(s){return t.call(n,s,o++)}),u}function ue(e){if(e._status===-1){var t=e._result;t=t(),t.then(function(n){(e._status===0||e._status===-1)&&(e._status=1,e._result=n)},function(n){(e._status===0||e._status===-1)&&(e._status=2,e._result=n)}),e._status===-1&&(e._status=0,e._result=t)}if(e._status===1)return e._result.default;throw e._result}var l={current:null},m={transition:null},ce={ReactCurrentDispatcher:l,ReactCurrentBatchConfig:m,ReactCurrentOwner:R};function V(){throw Error("act(...) is not supported in production builds of React.")}r.Children={map:d,forEach:function(e,t,n){d(e,function(){t.apply(this,arguments)},n)},count:function(e){var t=0;return d(e,function(){t++}),t},toArray:function(e){return d(e,function(t){return t})||[]},only:function(e){if(!C(e))throw Error("React.Children.only expected to receive a single React element child.");return e}};r.Component=p;r.Fragment=Y;r.Profiler=J;r.PureComponent=S;r.StrictMode=G;r.Suspense=Z;r.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED=ce;r.act=V;r.cloneElement=function(e,t,n){if(e==null)throw Error("React.cloneElement(...): The argument must be a React element, but you passed "+e+".");var u=O({},e.props),o=e.key,s=e.ref,f=e._owner;if(t!=null){if(t.ref!==void 0&&(s=t.ref,f=R.current),t.key!==void 0&&(o=""+t.key),e.type&&e.type.defaultProps)var i=e.type.defaultProps;for(c in t)P.call(t,c)&&!T.hasOwnProperty(c)&&(u[c]=t[c]===void 0&&i!==void 0?i[c]:t[c])}var c=arguments.length-2;if(c===1)u.children=n;else if(1<c){i=Array(c);for(var a=0;a<c;a++)i[a]=arguments[a+2];u.children=i}return{$$typeof:y,type:e.type,key:o,ref:s,props:u,_owner:f}};r.createContext=function(e){return e={$$typeof:Q,_currentValue:e,_currentValue2:e,_threadCount:0,Provider:null,Consumer:null,_defaultValue:null,_globalName:null},e.Provider={$$typeof:K,_context:e},e.Consumer=e};r.createElement=D;r.createFactory=function(e){var t=D.bind(null,e);return t.type=e,t};r.createRef=function(){return{current:null}};r.forwardRef=function(e){return{$$typeof:X,render:e}};r.isValidElement=C;r.lazy=function(e){return{$$typeof:te,_payload:{_status:-1,_result:e},_init:ue}};r.memo=function(e,t){return{$$typeof:ee,type:e,compare:t===void 0?null:t}};r.startTransition=function(e){var t=m.transition;m.transition={};try{e()}finally{m.transition=t}};r.unstable_act=V;r.useCallback=function(e,t){return l.current.useCallback(e,t)};r.useContext=function(e){return l.current.useContext(e)};r.useDebugValue=function(){};r.useDeferredValue=function(e){return l.current.useDeferredValue(e)};r.useEffect=function(e,t){return l.current.useEffect(e,t)};r.useId=function(){return l.current.useId()};r.useImperativeHandle=function(e,t,n){return l.current.useImperativeHandle(e,t,n)};r.useInsertionEffect=function(e,t){return l.current.useInsertionEffect(e,t)};r.useLayoutEffect=function(e,t){return l.current.useLayoutEffect(e,t)};r.useMemo=function(e,t){return l.current.useMemo(e,t)};r.useReducer=function(e,t,n){return l.current.useReducer(e,t,n)};r.useRef=function(e){return l.current.useRef(e)};r.useState=function(e){return l.current.useState(e)};r.useSyncExternalStore=function(e,t,n){return l.current.useSyncExternalStore(e,t,n)};r.useTransition=function(){return l.current.useTransition()};r.version="18.3.1"});var F=w((fe,N)=>{"use strict";N.exports=L()});var h=H(F()),{Children:le,Component:ae,Fragment:pe,Profiler:ye,PureComponent:de,StrictMode:_e,Suspense:me,__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED:he,act:ve,cloneElement:Se,createContext:Ee,createElement:Re,createFactory:Ce,createRef:ke,forwardRef:we,isValidElement:be,lazy:$e,memo:je,startTransition:xe,unstable_act:Oe,useCallback:Ie,useContext:ge,useDebugValue:Pe,useDeferredValue:Te,useEffect:De,useId:Ve,useImperativeHandle:Le,useInsertionEffect:Ne,useLayoutEffect:Fe,useMemo:Ue,useReducer:qe,useRef:Ae,useState:Me,useSyncExternalStore:ze,useTransition:Be,version:He}=h,We=h.default??h;export{le as Children,ae as Component,pe as Fragment,ye as Profiler,de as PureComponent,_e as StrictMode,me as Suspense,he as __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED,ve as act,Se as cloneElement,Ee as createContext,Re as createElement,Ce as createFactory,ke as createRef,We as default,we as forwardRef,be as isValidElement,$e as lazy,je as memo,xe as startTransition,Oe as unstable_act,Ie as useCallback,ge as useContext,Pe as useDebugValue,Te as useDeferredValue,De as useEffect,Ve as useId,Le as useImperativeHandle,Ne as useInsertionEffect,Fe as useLayoutEffect,Ue as useMemo,qe as useReducer,Ae as useRef,Me as useState,ze as useSyncExternalStore,Be as useTransition,He as version};
-/*! Bundled license information:
-
-react/cjs/react.production.min.js:
-  (**
-   * @license React
-   * react.production.min.js
-   *
-   * Copyright (c) Facebook, Inc. and its affiliates.
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE file in the root directory of this source tree.
-   *)
-*/
-//# sourceMappingURL=react.mjs.map
-
-/vendor/jsx-runtime.mjs
-/* esm.sh - react@18.3.1/jsx-runtime */
-import*as __0$ from"./react.mjs";var require=n=>{const e=m=>typeof m.default<"u"?m.default:m,c=m=>Object.assign({__esModule:true},m);switch(n){case"react":return e(__0$);default:console.error('module "'+n+'" not found');return null;}};
-var y=Object.create;var l=Object.defineProperty;var j=Object.getOwnPropertyDescriptor;var x=Object.getOwnPropertyNames;var O=Object.getPrototypeOf,a=Object.prototype.hasOwnProperty;var v=(r=>typeof require<"u"?require:typeof Proxy<"u"?new Proxy(r,{get:(e,o)=>(typeof require<"u"?require:e)[o]}):r)(function(r){if(typeof require<"u")return require.apply(this,arguments);throw Error('Dynamic require of "'+r+'" is not supported')});var i=(r,e)=>()=>(e||r((e={exports:{}}).exports,e),e.exports);var E=(r,e,o,t)=>{if(e&&typeof e=="object"||typeof e=="function")for(let s of x(e))!a.call(r,s)&&s!==o&&l(r,s,{get:()=>e[s],enumerable:!(t=j(e,s))||t.enumerable});return r};var k=(r,e,o)=>(o=r!=null?y(O(r)):{},E(e||!r||!r.__esModule?l(o,"default",{value:r,enumerable:!0}):o,r));var c=i(n=>{"use strict";var N=v("react"),R=Symbol.for("react.element"),S=Symbol.for("react.fragment"),b=Object.prototype.hasOwnProperty,q=N.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner,w={key:!0,ref:!0,__self:!0,__source:!0};function _(r,e,o){var t,s={},p=null,u=null;o!==void 0&&(p=""+o),e.key!==void 0&&(p=""+e.key),e.ref!==void 0&&(u=e.ref);for(t in e)b.call(e,t)&&!w.hasOwnProperty(t)&&(s[t]=e[t]);if(r&&r.defaultProps)for(t in e=r.defaultProps,e)s[t]===void 0&&(s[t]=e[t]);return{$$typeof:R,type:r,key:p,ref:u,props:s,_owner:q.current}}n.Fragment=S;n.jsx=_;n.jsxs=_});var d=i((D,m)=>{"use strict";m.exports=c()});var f=k(d()),{Fragment:F,jsx:I,jsxs:L}=f,T=f.default??f;export{F as Fragment,T as default,I as jsx,L as jsxs};
-/*! Bundled license information:
-
-react/cjs/react-jsx-runtime.production.min.js:
-  (**
-   * @license React
-   * react-jsx-runtime.production.min.js
-   *
-   * Copyright (c) Facebook, Inc. and its affiliates.
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE file in the root directory of this source tree.
-   *)
-*/
-//# sourceMappingURL=jsx-runtime.mjs.map
-
-/vendor/jsx-dev-runtime.mjs
-/* esm.sh - react@18.3.1//jsx-dev-runtime */
-var d=Object.create;var c=Object.defineProperty;var j=Object.getOwnPropertyDescriptor;var x=Object.getOwnPropertyNames;var f=Object.getPrototypeOf,l=Object.prototype.hasOwnProperty;var i=(r,e)=>()=>(e||r((e={exports:{}}).exports,e),e.exports);var v=(r,e,t,a)=>{if(e&&typeof e=="object"||typeof e=="function")for(let s of x(e))!l.call(r,s)&&s!==t&&c(r,s,{get:()=>e[s],enumerable:!(a=j(e,s))||a.enumerable});return r};var E=(r,e,t)=>(t=r!=null?d(f(r)):{},v(e||!r||!r.__esModule?c(t,"default",{value:r,enumerable:!0}):t,r));var u=i(m=>{"use strict";var g=Symbol.for("react.fragment");m.Fragment=g;m.jsxDEV=void 0});var p=i((q,n)=>{"use strict";n.exports=u()});var o=E(p()),{Fragment:F,jsxDEV:N}=o,b=o.default??o;export{F as Fragment,b as default,N as jsxDEV};
-/*! Bundled license information:
-
-react/cjs/react-jsx-dev-runtime.production.min.js:
-  (**
-   * @license React
-   * react-jsx-dev-runtime.production.min.js
-   *
-   * Copyright (c) Facebook, Inc. and its affiliates.
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE file in the root directory of this source tree.
-   *)
-*/
-//# sourceMappingURL=jsx-dev-runtime.mjs.map
-
-
-/js/useSaleAlerts.js
-import { useEffect, useRef, useState } from "react";
-import { playReadyBell } from "./notify.js";
-// Watches each order's KITCHEN and BAR sub-status independently (instead of
-// the combined order.status computed in store.js, which only reads "ready"
-// once BOTH stations are done). That way a ticket with only kitchen items
-// rings as soon as the kitchen is ready, one with only bar items rings as
-// soon as the bar is ready, and a ticket with items on both stations rings
-// TWICE — once per station, whenever each one independently flips to
-// "ready" — rather than waiting for whichever station is slower.
-// A station's status only ever reaches "ready" if that order actually has
-// items for that station (Kitchen/Bar Display only show tickets — and only
-// expose the "Mark Ready" button — for stations that have items on them),
-// so no applicability check is needed here: a non-applicable station's
-// status just never moves off its default.
-//
-// LINE-LEVEL: Kitchen/Bar can also send individual items (or a whole
-// category label) to the waiters via `item.ready`. When lines newly flip to
-// ready on an order, that rings ONCE per order per update — even if several
-// lines were sent together — unless a station-level ring already fired for
-// that same order in this update (so "Mark Ready" right after sending
-// items doesn't double-ring).
-//
-// Rings only on devices configured as "waiter" (deviceRole === "waiter").
-// Kitchen and Bar Display screens pass their own deviceRole in here too, so
-// this hook still tracks the list for them, it just never plays the sound.
-const itemKey = (it) => `${it.menuId}|${it.seat ?? ""}`;
-
-function useReadyAlerts(orders, deviceRole) {
-  const prevStatusRef = useRef({});
-  const [readyOrders, setReadyOrders] = useState([]);
-  useEffect(() => {
-    const prevStatus = prevStatusRef.current;
-    const nextStatus = {};
-    let ringCount = 0;
-    for (const order of orders) {
-      const prev = prevStatus[order.id];
-      const prevKitchen = prev?.kitchen;
-      const prevBar = prev?.bar;
-      const readyKeys = order.items.filter((it) => it.ready).map(itemKey);
-      nextStatus[order.id] = { kitchen: order.kitchenStatus, bar: order.barStatus, ready: readyKeys };
-      let stationRang = false;
-      if (order.kitchenStatus === "ready" && prevKitchen && prevKitchen !== "ready") {
-        ringCount += 1;
-        stationRang = true;
-      }
-      if (order.barStatus === "ready" && prevBar && prevBar !== "ready") {
-        ringCount += 1;
-        stationRang = true;
-      }
-      if (!stationRang && prev && readyKeys.some((k) => !prev.ready.includes(k))) {
-        ringCount += 1;
-      }
-    }
-    prevStatusRef.current = nextStatus;
-    if (ringCount && deviceRole === "waiter") {
-      // Stagger multiple dings (e.g. kitchen + bar on the same ticket, or two
-      // separate tickets landing in the same tick) so they're heard as
-      // distinct rings instead of overlapping into one muddy tone.
-      for (let i = 0; i < ringCount; i++) {
-        setTimeout(() => playReadyBell(), i * 650);
-      }
-    }
-    setReadyOrders(
-      orders.filter(
-        (o) =>
-          !o.paid &&
-          (o.kitchenStatus === "ready" ||
-            o.barStatus === "ready" ||
-            (o.status !== "served" && o.items.some((it) => it.ready)))
-      )
-    );
-  }, [orders, deviceRole]);
-  return readyOrders;
+// Which order THIS device's Register view has open. Used to live in
+// app_state.active_order_id — a single global row synced over Supabase
+// Realtime to every connected device — so one waiter opening/selecting a
+// table silently swapped the order every other waiter's phone was looking
+// at too. It's local-only now, one value per device/browser, exactly like
+// deviceRole.js and the theme in app.jsx.
+const ACTIVE_ORDER_KEY = "tetra:activeOrderId";
+function getStoredActiveOrderId() {
+  try {
+    return window.localStorage.getItem(ACTIVE_ORDER_KEY) || null;
+  } catch {
+    return null;
+  }
 }
-export { useReadyAlerts };
+function setStoredActiveOrderId(id) {
+  try {
+    if (id) window.localStorage.setItem(ACTIVE_ORDER_KEY, id);
+    else window.localStorage.removeItem(ACTIVE_ORDER_KEY);
+  } catch {
+    // localStorage unavailable — activeOrderId just won't persist across reloads.
+  }
+}
 
-/js/useSaleAlerts.js
-import { useEffect, useRef } from "react";
-import { playSaleAlert } from "./notify.js";
-// Rings on KITCHEN / BAR devices when a waiter presses "Sale" for a
-// category (order items newly flagged `sale`). A kitchen device only reacts
-// to kitchen-station items and a bar device to bar-station items; waiter
-// devices never ring. One ring per order per update, even if several lines
-// were flagged together. The first pass after load only records state.
-const itemKey = (it) => `${it.menuId}|${it.seat ?? ""}`;
+const EMPTY_STATE = {
+  staff: [],
+  categories: [],
+  menu: [],
+  tables: [],
+  orders: [],
+  currentStaff: "",
+  activeOrderId: null,
+  timerStartMode: "sent",
+};
 
-function useSaleAlerts(orders, menu, deviceRole) {
-  const prevRef = useRef(null);
-  useEffect(() => {
-    const prev = prevRef.current;
-    const next = {};
-    let rings = 0;
-    for (const order of orders) {
-      const saleKeys = order.items.filter((it) => it.sale).map(itemKey);
-      next[order.id] = saleKeys;
-      if (!prev || !prev[order.id]) continue;
-      const fresh = order.items.filter((it) => it.sale && !prev[order.id].includes(itemKey(it)));
-      const mine = fresh.some((it) => {
-        const station = menu.find((m) => m.id === it.menuId)?.station || "kitchen";
-        return station === deviceRole;
+const STAGE_RANK = { sent: 0, preparing: 1, ready: 2, served: 3 };
+
+function stationOf(state, menuId) {
+  return state.menu.find((m) => m.id === menuId)?.station || "kitchen";
+}
+
+// ---------- table ordering ----------
+// Tables carry a `sort_order` (tables.sort_order column). The Floor Plan and
+// the Admin list both follow it, grouped by zone.
+function sortTables(rows) {
+  return [...rows].sort(
+    (a, b) =>
+      (a.sort_order ?? 1e9) - (b.sort_order ?? 1e9) || String(a.name).localeCompare(String(b.name))
+  );
+}
+
+// Moves table `id` one step (-1 = earlier, +1 = later) among the tables of
+// ITS OWN zone, then renumbers everything 0..n-1 so ties/nulls can't linger.
+function reorderTables(tables, id, direction) {
+  const ordered = sortTables(tables);
+  const me = ordered.find((t) => t.id === id);
+  if (!me) return null;
+  const sameZone = ordered.filter((t) => t.zone === me.zone);
+  const pos = sameZone.findIndex((t) => t.id === id);
+  const other = sameZone[pos + direction];
+  if (!other) return null;
+  const a = ordered.indexOf(me);
+  const b = ordered.indexOf(other);
+  [ordered[a], ordered[b]] = [ordered[b], ordered[a]];
+  return ordered.map((t, i) => ({ ...t, sort_order: i }));
+}
+
+// ---------- fetch + shape everything into the state object the views expect ----------
+
+async function fetchAll() {
+  const [
+    { data: staffRows, error: e1 },
+    { data: menuRows, error: e2 },
+    { data: tableRows, error: e3 },
+    { data: orderRows, error: e4 },
+    { data: orderItemRows, error: e5 },
+    { data: appStateRows, error: e6 },
+    { data: categoryRows, error: e7 },
+  ] = await Promise.all([
+    supabase.from("staff").select("*").order("name"),
+    supabase.from("menu_items").select("*").order("name"),
+    supabase.from("tables").select("*"),
+    supabase.from("orders").select("*").order("created_at"),
+    supabase.from("order_items").select("*"),
+    supabase.from("app_state").select("*").eq("id", 1),
+    supabase.from("categories").select("*").order("sort_order"),
+  ]);
+
+  const err = e1 || e2 || e3 || e4 || e5 || e6 || e7;
+  if (err) {
+    console.error("Supabase fetch error:", err);
+    throw err;
+  }
+
+  const itemsByOrder = {};
+  for (const it of orderItemRows || []) {
+    (itemsByOrder[it.order_id] ||= []).push({
+      menuId: it.menu_id,
+      name: it.name,
+      price: Number(it.price),
+      qty: it.qty,
+      note: it.note || "",
+      // Which guest at the table this line belongs to (1-based), or null
+      // for a shared/unassigned line. Lets the cart be split by seat for
+      // per-guest ordering and, eventually, per-guest billing.
+      seat: it.seat ?? null,
+      // Set from the Kitchen/Bar screens: this single line has been
+      // prepared/checked off (order_items.done column).
+      done: !!it.done,
+      // Sent to the waiters individually from Kitchen/Bar ("ready for
+      // pickup" at line level, order_items.ready column).
+      ready: !!it.ready,
+      // The waiter pressed "Sale" for this line's category: the kitchen/bar
+      // should start preparing it (order_items.sale column).
+      sale: !!it.sale,
+    });
+  }
+
+  const stationById = {};
+  for (const m of menuRows || []) {
+    stationById[m.id] = m.station || "kitchen";
+  }
+
+  const orders = (orderRows || []).map((o) => {
+    const items = itemsByOrder[o.id] || [];
+    const kitchenApplies = items.some((it) => (stationById[it.menuId] || "kitchen") === "kitchen");
+    const barApplies = items.some((it) => (stationById[it.menuId] || "kitchen") === "bar");
+    const kitchenStatus = o.kitchen_status || "sent";
+    const barStatus = o.bar_status || "sent";
+
+    // The order's overall "status" (used by register/floorplan/header) tracks
+    // whichever station is furthest behind, so it only reads "served" once
+    // BOTH the kitchen and the bar are done with their part of the ticket.
+    let status = o.status;
+    if (status !== "new" && status !== "paid") {
+      const active = [];
+      if (kitchenApplies) active.push(kitchenStatus);
+      if (barApplies) active.push(barStatus);
+      if (active.length) {
+        status = active.reduce((worst, s) => (STAGE_RANK[s] < STAGE_RANK[worst] ? s : worst));
+      }
+    }
+
+    return {
+      id: o.id,
+      tableId: o.table_id,
+      staff: o.staff,
+      items,
+      createdAt: new Date(o.created_at).getTime(),
+      sentAt: o.sent_at ? new Date(o.sent_at).getTime() : null,
+      kitchenStatus,
+      barStatus,
+      kitchenServedAt: o.kitchen_served_at ? new Date(o.kitchen_served_at).getTime() : null,
+      barServedAt: o.bar_served_at ? new Date(o.bar_served_at).getTime() : null,
+      kitchenStartedAt: o.kitchen_started_at ? new Date(o.kitchen_started_at).getTime() : null,
+      barStartedAt: o.bar_started_at ? new Date(o.bar_started_at).getTime() : null,
+      kitchenDismissed: !!o.kitchen_dismissed,
+      barDismissed: !!o.bar_dismissed,
+      status,
+      billRequested: o.bill_requested,
+      paid: o.paid,
+    };
+  });
+
+  const appRow = (appStateRows && appStateRows[0]) || {};
+  const staffNames = (staffRows || []).map((s) => s.name);
+
+  // Local-only, per-device — see ACTIVE_ORDER_KEY above. Drop it if the
+  // order it points to is gone or already paid, so a stale id left over
+  // from a previous session doesn't silently reopen a closed order.
+  const storedActive = getStoredActiveOrderId();
+  const activeOrderId =
+    storedActive && orders.some((o) => o.id === storedActive && !o.paid) ? storedActive : null;
+
+  return {
+    staff: staffNames,
+    categories: (categoryRows || []).map((c) => c.name),
+    menu: (menuRows || []).map((m) => ({ ...m, price: Number(m.price) })),
+    tables: sortTables(tableRows || []),
+    orders,
+    currentStaff: appRow.current_staff || staffNames[0] || "",
+    activeOrderId,
+    // "sent": ticket timers start the moment the waiter sends the order.
+    // "preparing": ticket timers start once that station actually marks the
+    // ticket as preparing (kitchen_started_at / bar_started_at below).
+    timerStartMode: appRow.timer_start_mode || "sent",
+  };
+}
+
+// ---------- optimistic local reducer ----------
+// Mirrors what runAction() will eventually persist, so the UI updates the
+// instant the user acts instead of waiting for a Supabase round trip +
+// realtime event + full refetch. The real fetchAll() (triggered by realtime)
+// still runs afterwards and reconciles anything this simplified version
+// gets wrong (e.g. two devices editing the same order at once).
+
+function recomputeStatus(state, order) {
+  if (order.status === "new" || order.status === "paid") return order.status;
+  const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
+  const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
+  const active = [];
+  if (kitchenApplies) active.push(order.kitchenStatus);
+  if (barApplies) active.push(order.barStatus);
+  if (!active.length) return order.status;
+  return active.reduce((worst, s) => (STAGE_RANK[s] < STAGE_RANK[worst] ? s : worst));
+}
+
+function withOrder(state, orderId, patch) {
+  return {
+    ...state,
+    orders: state.orders.map((o) => {
+      if (o.id !== orderId) return o;
+      const next = typeof patch === "function" ? patch(o) : { ...o, ...patch };
+      return { ...next, status: recomputeStatus(state, next) };
+    }),
+  };
+}
+
+function applyOptimistic(state, action) {
+  switch (action.type) {
+    case "SET_STAFF":
+      return { ...state, currentStaff: action.name };
+
+    case "SET_TIMER_MODE":
+      return { ...state, timerStartMode: action.mode };
+
+    case "ADD_STAFF":
+      return state.staff.includes(action.name)
+        ? state
+        : { ...state, staff: [...state.staff, action.name] };
+
+    case "REMOVE_STAFF": {
+      if (state.staff.length <= 1) return state;
+      const staff = state.staff.filter((s) => s !== action.name);
+      const currentStaff = state.currentStaff === action.name ? staff[0] || "" : state.currentStaff;
+      return { ...state, staff, currentStaff };
+    }
+
+    case "OPEN_ORDER": {
+      const newOrder = {
+        id: action.id,
+        tableId: action.tableId,
+        staff: state.currentStaff,
+        items: [],
+        createdAt: Date.now(),
+        sentAt: null,
+        kitchenStatus: "sent",
+        barStatus: "sent",
+        kitchenServedAt: null,
+        barServedAt: null,
+        kitchenStartedAt: null,
+        barStartedAt: null,
+        kitchenDismissed: false,
+        barDismissed: false,
+        status: "new",
+        billRequested: false,
+        paid: false,
+      };
+      return { ...state, orders: [...state.orders, newOrder], activeOrderId: action.id };
+    }
+
+    case "SELECT_ORDER":
+      return { ...state, activeOrderId: action.orderId };
+
+    case "SET_ACTIVE_TABLE":
+      return { ...state, activeOrderId: null };
+
+    case "ADD_TO_ORDER": {
+      const seat = action.seat ?? null;
+      const next = withOrder(state, action.orderId, (o) => {
+        // Matched by menuId AND seat, so the same dish ordered for two
+        // different seats becomes two separate lines instead of merging —
+        // only a repeat tap for the SAME seat bumps the existing qty.
+        const idx = o.items.findIndex((it) => it.menuId === action.menuId && (it.seat ?? null) === seat);
+        const items =
+          idx >= 0
+            ? o.items.map((it, i) => (i === idx ? { ...it, qty: it.qty + 1 } : it))
+            : [...o.items, { menuId: action.menuId, name: action.name, price: action.price, qty: 1, note: "", seat, done: false, ready: false, sale: false }];
+        return { ...o, items };
       });
-      if (mine) rings += 1;
+      return {
+        ...next,
+        menu: next.menu.map((m) => (m.id === action.menuId ? { ...m, stock: Math.max(0, m.stock - 1) } : m)),
+      };
     }
-    prevRef.current = next;
-    if (deviceRole === "waiter") return;
-    for (let i = 0; i < rings; i++) {
-      setTimeout(() => playSaleAlert(), i * 700);
-    }
-  }, [orders, menu, deviceRole]);
-}
-export { useSaleAlerts };
 
+    case "SET_QTY": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return state;
+      // Quantity going up needs more stock, going down gives stock back —
+      // this used to only happen on the FIRST unit (added via the menu
+      // grid); the stepper bumping qty never touched stock at all, so a
+      // wrong tap here silently drifted the count. Never quantity 0 here:
+      // the Minus button stays disabled at qty 1, and full removal goes
+      // through REMOVE_ITEM below instead.
+      const qty = Math.max(1, action.qty);
+      const delta = qty - item.qty;
+      const next = withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => (i === action.index ? { ...it, qty } : it)),
+      }));
+      if (delta === 0) return next;
+      return {
+        ...next,
+        menu: next.menu.map((m) => (m.id === item.menuId ? { ...m, stock: Math.max(0, m.stock - delta) } : m)),
+      };
+    }
+
+    // Removes a line entirely and returns its full quantity to stock — used
+    // both for the qty-stepper's trash icon and to undo a waiter's mistyped
+    // comanda line, whether or not it was already sent to the kitchen/bar.
+    case "REMOVE_ITEM": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return state;
+      const next = withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.filter((_, i) => i !== action.index),
+      }));
+      return {
+        ...next,
+        menu: next.menu.map((m) => (m.id === item.menuId ? { ...m, stock: m.stock + item.qty } : m)),
+      };
+    }
+
+    case "SET_NOTE":
+      return withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => (i === action.index ? { ...it, note: action.note } : it)),
+      }));
+
+    case "SET_ITEM_SEAT":
+      return withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => (i === action.index ? { ...it, seat: action.seat ?? null } : it)),
+      }));
+
+    // Quick restock/correction from the Inventory tab — separate from the
+    // full menu-item editor in Admin, and applied instantly like the rest
+    // of the item-level actions instead of waiting for the next refresh.
+    case "SET_STOCK":
+      return {
+        ...state,
+        menu: state.menu.map((m) => (m.id === action.id ? { ...m, stock: Math.max(0, action.stock) } : m)),
+      };
+
+    case "TOGGLE_ITEM_DONE":
+      return withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => (i === action.index ? { ...it, done: !!action.done } : it)),
+      }));
+
+    case "SET_ITEMS_SALE":
+      return withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => (action.indices.includes(i) ? { ...it, sale: !!action.sale } : it)),
+      }));
+
+    case "SET_ITEMS_READY":
+      return withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => (action.indices.includes(i) ? { ...it, ready: !!action.ready } : it)),
+      }));
+
+    case "MOVE_TABLE": {
+      const next = reorderTables(state.tables, action.id, action.direction);
+      return next ? { ...state, tables: next } : state;
+    }
+
+    case "UPDATE_TABLE":
+      return {
+        ...state,
+        tables: state.tables.map((t) =>
+          t.id === action.id ? { ...t, name: action.name, zone: action.zone, capacity: action.capacity } : t
+        ),
+      };
+
+    case "SEND_TO_KITCHEN":
+      return withOrder(state, action.orderId, (o) => {
+        if (!o.items.length) return o;
+        return {
+          ...o,
+          status: "sent",
+          sentAt: Date.now(),
+          kitchenStatus: "sent",
+          barStatus: "sent",
+          kitchenDismissed: false,
+          barDismissed: false,
+        };
+      });
+
+    case "SET_KITCHEN": {
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      return withOrder(state, action.orderId, (o) => {
+        const patch = {};
+        if (station === "bar") {
+          patch.barStatus = action.status;
+          if (action.status === "preparing" && !o.barStartedAt) patch.barStartedAt = Date.now();
+          if (action.status === "served") patch.barServedAt = Date.now();
+        } else {
+          patch.kitchenStatus = action.status;
+          if (action.status === "preparing" && !o.kitchenStartedAt) patch.kitchenStartedAt = Date.now();
+          if (action.status === "served") patch.kitchenServedAt = Date.now();
+        }
+        return { ...o, ...patch };
+      });
+    }
+
+    case "REQUEST_BILL":
+      return withOrder(state, action.orderId, { billRequested: true });
+
+    case "PAY": {
+      const next = withOrder(state, action.orderId, { paid: true, status: "paid" });
+      return state.activeOrderId === action.orderId ? { ...next, activeOrderId: null } : next;
+    }
+
+    case "DISMISS_ORDER": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      if (!order) return state;
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      let next = withOrder(
+        state,
+        action.orderId,
+        station === "bar" ? { barDismissed: true } : { kitchenDismissed: true }
+      );
+      const updated = next.orders.find((o) => o.id === action.orderId);
+      const kitchenApplies = order.items.some((it) => stationOf(state, it.menuId) === "kitchen");
+      const barApplies = order.items.some((it) => stationOf(state, it.menuId) === "bar");
+      const kitchenDone = !kitchenApplies || updated.kitchenDismissed || station === "kitchen";
+      const barDone = !barApplies || updated.barDismissed || station === "bar";
+      if (kitchenDone && barDone) {
+        next = { ...next, orders: next.orders.filter((o) => o.id !== action.orderId) };
+        if (next.activeOrderId === action.orderId) next = { ...next, activeOrderId: null };
+      }
+      return next;
+    }
+
+    // Menu/table/category admin edits (Settings screen) are infrequent and
+    // not where the lag was reported, so they still wait for the realtime
+    // refresh to reflect on screen.
+    default:
+      return state;
+  }
+}
+
+// ---------- turn a dispatched action into Supabase writes ----------
+// Realtime subscriptions (below) pick up the resulting DB changes and
+// refresh local state — every connected device sees the same thing.
+
+async function runAction(action, state) {
+  switch (action.type) {
+    case "SET_STAFF":
+      await supabase.from("app_state").update({ current_staff: action.name }).eq("id", 1);
+      return;
+
+    case "SET_TIMER_MODE":
+      await supabase.from("app_state").update({ timer_start_mode: action.mode }).eq("id", 1);
+      return;
+
+    case "ADD_STAFF":
+      await supabase.from("staff").insert({ name: action.name });
+      return;
+
+    case "REMOVE_STAFF": {
+      if (state.staff.length <= 1) return;
+      await supabase.from("staff").delete().eq("name", action.name);
+      if (state.currentStaff === action.name) {
+        const next = state.staff.find((s) => s !== action.name);
+        await supabase.from("app_state").update({ current_staff: next }).eq("id", 1);
+      }
+      return;
+    }
+
+    case "ADD_CATEGORY":
+      await supabase.from("categories").insert({
+        id: `c${Date.now()}`,
+        name: action.name,
+        sort_order: state.categories.length,
+      });
+      return;
+
+    case "RENAME_CATEGORY": {
+      await supabase.from("categories").update({ name: action.newName }).eq("name", action.oldName);
+      await supabase.from("menu_items").update({ category: action.newName }).eq("category", action.oldName);
+      return;
+    }
+
+    case "DELETE_CATEGORY":
+      await supabase.from("categories").delete().eq("name", action.name);
+      return;
+
+    case "SET_STOCK":
+      await supabase.from("menu_items").update({ stock: Math.max(0, action.stock) }).eq("id", action.id);
+      return;
+
+    case "ADD_ITEM":
+      await supabase.from("menu_items").insert({
+        id: `m${Date.now()}`,
+        name: action.name,
+        category: action.category,
+        price: action.price,
+        stock: action.stock,
+        station: action.station || "kitchen",
+        image_url: action.imageUrl || null,
+      });
+      return;
+
+    case "UPDATE_ITEM":
+      await supabase
+        .from("menu_items")
+        .update({
+          name: action.name,
+          category: action.category,
+          price: action.price,
+          stock: action.stock,
+          station: action.station || "kitchen",
+          image_url: action.imageUrl || null,
+        })
+        .eq("id", action.id);
+      return;
+
+    case "DELETE_ITEM": {
+      const item = state.menu.find((m) => m.id === action.id);
+      await supabase.from("menu_items").delete().eq("id", action.id);
+      // Clean up the orphaned photo in Storage — but only if no other menu
+      // item still points at the same URL (can happen if someone pasted the
+      // same external link into two items).
+      const stillUsed = state.menu.some((m) => m.id !== action.id && m.image_url === item?.image_url);
+      if (item?.image_url && !stillUsed) {
+        await deleteMenuImageByUrl(item.image_url);
+      }
+      return;
+    }
+
+    case "ADD_TABLE":
+      await supabase.from("tables").insert({
+        id: `t${Date.now()}`,
+        name: action.name,
+        zone: action.zone,
+        capacity: action.capacity,
+        sort_order: state.tables.reduce((m, t) => Math.max(m, t.sort_order ?? -1), -1) + 1,
+      });
+      return;
+
+    case "RENAME_TABLE":
+      await supabase.from("tables").update({ name: action.name }).eq("id", action.id);
+      return;
+
+    case "SET_ITEMS_SALE": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      if (!order) return;
+      const targets = action.indices.map((i) => order.items[i]).filter(Boolean);
+      const results = await Promise.all(
+        targets.map((item) => {
+          const seat = item.seat ?? null;
+          let q = supabase
+            .from("order_items")
+            .update({ sale: !!action.sale })
+            .eq("order_id", action.orderId)
+            .eq("menu_id", item.menuId);
+          return seat === null ? q.is("seat", null) : q.eq("seat", seat);
+        })
+      );
+      const failed = results.find((r) => r.error);
+      if (failed) throw failed.error;
+      return;
+    }
+
+    case "SET_ITEMS_READY": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      if (!order) return;
+      const targets = action.indices.map((i) => order.items[i]).filter(Boolean);
+      const results = await Promise.all(
+        targets.map((item) => {
+          const seat = item.seat ?? null;
+          let q = supabase
+            .from("order_items")
+            .update({ ready: !!action.ready })
+            .eq("order_id", action.orderId)
+            .eq("menu_id", item.menuId);
+          return seat === null ? q.is("seat", null) : q.eq("seat", seat);
+        })
+      );
+      const failed = results.find((r) => r.error);
+      if (failed) throw failed.error;
+      return;
+    }
+
+    case "MOVE_TABLE": {
+      const next = reorderTables(state.tables, action.id, action.direction);
+      if (!next) return;
+      const before = new Map(state.tables.map((t) => [t.id, t.sort_order]));
+      const changed = next.filter((t) => before.get(t.id) !== t.sort_order);
+      const results = await Promise.all(
+        changed.map((t) => supabase.from("tables").update({ sort_order: t.sort_order }).eq("id", t.id))
+      );
+      const failed = results.find((r) => r.error);
+      if (failed) throw failed.error;
+      return;
+    }
+
+    case "UPDATE_TABLE":
+      await supabase
+        .from("tables")
+        .update({ name: action.name, zone: action.zone, capacity: action.capacity })
+        .eq("id", action.id);
+      return;
+
+    case "DELETE_TABLE":
+      await supabase.from("tables").delete().eq("id", action.id);
+      return;
+
+    case "OPEN_ORDER": {
+      const id = action.id || `o${Date.now()}`;
+      await supabase.from("orders").insert({
+        id,
+        table_id: action.tableId,
+        staff: state.currentStaff,
+        status: "new",
+        bill_requested: false,
+        paid: false,
+      });
+      // activeOrderId is local-only now (see ACTIVE_ORDER_KEY) — no Supabase
+      // write here, it's persisted to this device's localStorage in the
+      // StoreProvider effect instead.
+      return;
+    }
+
+    case "SELECT_ORDER":
+    case "SET_ACTIVE_TABLE":
+      // Local-only — nothing to persist to Supabase.
+      return;
+
+    case "ADD_TO_ORDER": {
+      const seat = action.seat ?? null;
+      // Ask the database (not the local snapshot) whether this line already
+      // exists. Fast repeated taps used to see a stale "doesn't exist yet"
+      // and insert a second row for the same dish. Writes are also queued
+      // one at a time in dispatch(), so the first tap's insert has finished
+      // by the time this check runs for the second one.
+      let lookup = supabase
+        .from("order_items")
+        .select("qty")
+        .eq("order_id", action.orderId)
+        .eq("menu_id", action.menuId);
+      lookup = seat === null ? lookup.is("seat", null) : lookup.eq("seat", seat);
+      const { data: found, error: lookupErr } = await lookup.limit(1);
+      if (lookupErr) throw lookupErr;
+      const existing = found && found[0];
+      if (existing) {
+        let q = supabase
+          .from("order_items")
+          .update({ qty: existing.qty + 1 })
+          .eq("order_id", action.orderId)
+          .eq("menu_id", action.menuId);
+        q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+        const { error: updErr } = await q;
+        if (updErr) throw updErr;
+      } else {
+        await supabase.from("order_items").insert({
+          order_id: action.orderId,
+          menu_id: action.menuId,
+          name: action.name,
+          price: action.price,
+          qty: 1,
+          note: "",
+          seat,
+        });
+      }
+      const menuItem = state.menu.find((m) => m.id === action.menuId);
+      if (menuItem) {
+        await supabase
+          .from("menu_items")
+          .update({ stock: Math.max(0, menuItem.stock - 1) })
+          .eq("id", action.menuId);
+      }
+      return;
+    }
+
+    case "SET_QTY": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      const seat = item.seat ?? null;
+      const qty = Math.max(1, action.qty);
+      let q = supabase
+        .from("order_items")
+        .update({ qty })
+        .eq("order_id", action.orderId)
+        .eq("menu_id", item.menuId);
+      q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+      const { error } = await q;
+      if (error) throw error;
+      const delta = qty - item.qty;
+      if (delta !== 0) {
+        const menuItem = state.menu.find((m) => m.id === item.menuId);
+        if (menuItem) {
+          const { error: stockErr } = await supabase
+            .from("menu_items")
+            .update({ stock: Math.max(0, menuItem.stock - delta) })
+            .eq("id", item.menuId);
+          if (stockErr) throw stockErr;
+        }
+      }
+      return;
+    }
+
+    case "REMOVE_ITEM": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      const seat = item.seat ?? null;
+      let q = supabase.from("order_items").delete().eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+      const { error } = await q;
+      if (error) throw error;
+      const menuItem = state.menu.find((m) => m.id === item.menuId);
+      if (menuItem) {
+        const { error: stockErr } = await supabase
+          .from("menu_items")
+          .update({ stock: menuItem.stock + item.qty })
+          .eq("id", item.menuId);
+        if (stockErr) throw stockErr;
+      }
+      return;
+    }
+
+    case "SET_NOTE": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      const seat = item.seat ?? null;
+      let q = supabase
+        .from("order_items")
+        .update({ note: action.note })
+        .eq("order_id", action.orderId)
+        .eq("menu_id", item.menuId);
+      q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+      await q;
+      return;
+    }
+
+    case "SET_ITEM_SEAT": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      const oldSeat = item.seat ?? null;
+      const newSeat = action.seat ?? null;
+      let q = supabase
+        .from("order_items")
+        .update({ seat: newSeat })
+        .eq("order_id", action.orderId)
+        .eq("menu_id", item.menuId);
+      q = oldSeat === null ? q.is("seat", null) : q.eq("seat", oldSeat);
+      await q;
+      return;
+    }
+
+    case "TOGGLE_ITEM_DONE": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      const seat = item.seat ?? null;
+      let q = supabase
+        .from("order_items")
+        .update({ done: !!action.done })
+        .eq("order_id", action.orderId)
+        .eq("menu_id", item.menuId);
+      q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+      await q;
+      return;
+    }
+
+    case "SEND_TO_KITCHEN": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      if (order && order.items.length) {
+        await supabase
+          .from("orders")
+          .update({
+            status: "sent",
+            sent_at: new Date().toISOString(),
+            kitchen_status: "sent",
+            bar_status: "sent",
+            kitchen_dismissed: false,
+            bar_dismissed: false,
+          })
+          .eq("id", action.orderId);
+      }
+      return;
+    }
+
+    case "SET_KITCHEN": {
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const patch = {};
+      if (station === "bar") {
+        patch.bar_status = action.status;
+        // Only stamp this the first time the ticket enters "preparing" —
+        // it's what the "preparing" timer-start mode measures from.
+        if (action.status === "preparing" && !order?.barStartedAt) {
+          patch.bar_started_at = new Date().toISOString();
+        }
+        if (action.status === "served") patch.bar_served_at = new Date().toISOString();
+      } else {
+        patch.kitchen_status = action.status;
+        if (action.status === "preparing" && !order?.kitchenStartedAt) {
+          patch.kitchen_started_at = new Date().toISOString();
+        }
+        if (action.status === "served") patch.kitchen_served_at = new Date().toISOString();
+      }
+      await supabase.from("orders").update(patch).eq("id", action.orderId);
+      return;
+    }
+
+    case "REQUEST_BILL":
+      await supabase.from("orders").update({ bill_requested: true }).eq("id", action.orderId);
+      return;
+
+    case "PAY": {
+      await supabase.from("orders").update({ paid: true, status: "paid" }).eq("id", action.orderId);
+      // activeOrderId is local-only — clearing it (when this device had it
+      // open) already happened in the optimistic reducer.
+      return;
+    }
+
+    case "DISMISS_ORDER": {
+      const station = action.station === "bar" ? "bar" : "kitchen";
+      const patch = station === "bar" ? { bar_dismissed: true } : { kitchen_dismissed: true };
+
+      // Read back the row we just patched instead of trusting this device's
+      // local cache. Kitchen and Bar are normally separate tablets, each
+      // syncing over realtime — if both are dismissed within the same
+      // second, whichever device is second may not have heard about the
+      // first device's dismiss yet. Deciding from a fresh DB read (rather
+      // than `order.kitchenDismissed`/`barDismissed` from local state)
+      // means the two devices can never both think "the other one isn't
+      // done yet" and leave the order stuck forever.
+      const { data: updated, error } = await supabase
+        .from("orders")
+        .update(patch)
+        .eq("id", action.orderId)
+        .select()
+        .single();
+      if (error || !updated) return;
+
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const kitchenApplies = order ? order.items.some((it) => stationOf(state, it.menuId) === "kitchen") : true;
+      const barApplies = order ? order.items.some((it) => stationOf(state, it.menuId) === "bar") : true;
+      const kitchenDone = !kitchenApplies || !!updated.kitchen_dismissed;
+      const barDone = !barApplies || !!updated.bar_dismissed;
+      if (kitchenDone && barDone) {
+        // Delete child rows first. If this Supabase project doesn't have an
+        // ON DELETE CASCADE from order_items -> orders, deleting "orders"
+        // directly fails on the foreign key — and since that error used to
+        // go unchecked, the row silently stayed in the database. The local
+        // optimistic removal would then get overwritten by the next
+        // refresh, making the dismissed order appear to "come back".
+        const { error: itemsErr } = await supabase
+          .from("order_items")
+          .delete()
+          .eq("order_id", action.orderId);
+        if (itemsErr) throw itemsErr;
+
+        const { error: orderErr } = await supabase.from("orders").delete().eq("id", action.orderId);
+        if (orderErr) throw orderErr;
+        // activeOrderId is local-only — already cleared in the optimistic
+        // reducer on whichever device(s) had this order open.
+      }
+      return;
+    }
+
+    default:
+      return;
+  }
+}
+
+// ---------- React wiring ----------
+
+const StoreContext = createContext(null);
+
+export function StoreProvider({ children }) {
+  const [state, setState] = useState(EMPTY_STATE);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const refreshTimer = useRef(null);
+  // Writes run strictly one after another (see dispatch). While any are
+  // pending, a refetch could overwrite the optimistic UI with stale rows
+  // (that's what made repeated taps split into separate lines), so refreshes
+  // are held back and run once the queue is empty.
+  const writeQueue = useRef(Promise.resolve());
+  const pendingWrites = useRef(0);
+  const refreshWanted = useRef(false);
+
+  const refreshNow = useCallback(async () => {
+    if (pendingWrites.current > 0) {
+      refreshWanted.current = true;
+      return;
+    }
+    try {
+      const data = await fetchAll();
+      stateRef.current = data;
+      setState(data);
+    } catch {
+      // network hiccup — next realtime event or action will retry
+    }
+  }, []);
+
+  // Debounce so a burst of row-level realtime events (e.g. deleting an
+  // order + its items) only triggers one refetch.
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(refreshNow, 150);
+  }, [refreshNow]);
+
+  // Mirrors state.activeOrderId (set optimistically by OPEN_ORDER,
+  // SELECT_ORDER, SET_ACTIVE_TABLE, PAY, DISMISS_ORDER) into this device's
+  // own localStorage, instead of the old shared app_state row.
+  useEffect(() => {
+    setStoredActiveOrderId(state.activeOrderId);
+  }, [state.activeOrderId]);
+
+  useEffect(() => {
+    refreshNow();
+
+    const channel = supabase
+      .channel("tetra-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tables" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "app_state" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [refreshNow, scheduleRefresh]);
+
+  const dispatch = useCallback(
+    (action) => {
+      const current = stateRef.current;
+      // OPEN_ORDER needs the same id locally and in Supabase, or the
+      // optimistic ticket and the "real" one from the next refresh would
+      // show up as two separate orders.
+      const act =
+        action.type === "OPEN_ORDER" && !action.id
+          ? { ...action, id: `o${Date.now()}` }
+          : action;
+
+      const optimistic = applyOptimistic(current, act);
+      stateRef.current = optimistic;
+      setState(optimistic);
+
+      pendingWrites.current += 1;
+      writeQueue.current = writeQueue.current
+        .then(() => runAction(act, current))
+        .catch((err) => {
+          console.error("Supabase write failed:", act.type, err);
+          // Our local guess may now be wrong (write failed after the UI
+          // already moved on) — resync with the real data once the queue drains.
+          refreshWanted.current = true;
+        })
+        .then(() => {
+          pendingWrites.current -= 1;
+          if (pendingWrites.current === 0 && refreshWanted.current) {
+            refreshWanted.current = false;
+            refreshNow();
+          }
+        });
+    },
+    [refreshNow]
+  );
+
+  const api = useMemo(() => ({ state, dispatch }), [state]);
+
+  return <StoreContext.Provider value={api}>{children}</StoreContext.Provider>;
+}
+
+export function useStore() {
+  return useContext(StoreContext);
+}
+
+export function useOrdersByTable(state) {
+  const activeByTable = {};
+  for (const o of state.orders) {
+    if (o.paid) continue;
+    if (!activeByTable[o.tableId] || activeByTable[o.tableId].createdAt < o.createdAt) {
+      activeByTable[o.tableId] = o;
+    }
+  }
+  return activeByTable;
+}
+
+export function useKitchenOrders(state) {
+  return state.orders
+    .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid" && !o.kitchenDismissed)
+    .map((o) => ({
+      ...o,
+      // `index` = position in the FULL order.items array, so per-item
+      // actions (TOGGLE_ITEM_DONE) hit the right row even though this
+      // list is filtered by station.
+      items: o.items
+        .map((it, index) => ({ ...it, index }))
+        .filter((it) => stationOf(state, it.menuId) === "kitchen"),
+    }))
+    .filter((o) => o.items.length > 0);
+}
+
+export function useBarOrders(state) {
+  return state.orders
+    .filter((o) => !o.paid && o.status !== "new" && o.status !== "paid" && !o.barDismissed)
+    .map((o) => ({
+      ...o,
+      items: o.items
+        .map((it, index) => ({ ...it, index }))
+        .filter((it) => stationOf(state, it.menuId) === "bar"),
+    }))
+    .filter((o) => o.items.length > 0);
+}
+
+export { LOW_STOCK };
