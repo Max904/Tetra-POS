@@ -5,7 +5,7 @@ function jsxDEV(type, props, key) {
 }
 
 // js/app.jsx
-import { useEffect as useEffect7, useState as useState7 } from "react";
+import { useEffect as useEffect7, useState as useState8 } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ShoppingCart,
@@ -2824,6 +2824,8 @@ function FloorManager() {
 }
 
 // js/views/inventory.jsx
+import { useState as useState7 } from "react";
+import { Search as Search2, Minus as Minus2, Plus as Plus3, PackageX as PackageX2, AlertTriangle, PackageCheck } from "lucide-react";
 function stockBadge2(stock) {
   if (stock <= 0) return "out";
   if (stock <= LOW_STOCK) return "low";
@@ -2834,37 +2836,107 @@ function stockBadgeInfo(stock) {
   const label = cls === "out" ? "Out of stock" : cls === "low" ? "Low stock" : "In stock";
   return { cls, label };
 }
+var FILTERS = [
+  { key: "all", label: "All" },
+  { key: "low", label: "Low" },
+  { key: "out", label: "Out" }
+];
 function InventoryView() {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
+  const [query, setQuery] = useState7("");
+  const [filter, setFilter] = useState7("all");
+  const [draft, setDraft] = useState7({});
+  const total = state.menu.length;
+  const lowCount = state.menu.filter((m) => stockBadge2(m.stock) === "low").length;
+  const outCount = state.menu.filter((m) => stockBadge2(m.stock) === "out").length;
+  const q = query.trim().toLowerCase();
+  const visible = state.menu.filter((m) => {
+    if (q && !m.name.toLowerCase().includes(q)) return false;
+    if (filter === "low" && stockBadge2(m.stock) !== "low") return false;
+    if (filter === "out" && stockBadge2(m.stock) !== "out") return false;
+    return true;
+  });
+  const groups = [...state.categories, "Other"].map((cat) => ({ cat, items: visible.filter((m) => (m.category || "Other") === cat) })).filter((g) => g.items.length > 0);
+  const bump = (m, delta) => dispatch({ type: "SET_STOCK", id: m.id, stock: Math.max(0, m.stock + delta) });
+  const commitDraft = (m) => {
+    const raw = draft[m.id];
+    if (raw === void 0) return;
+    const n = parseInt(raw, 10);
+    setDraft((d) => {
+      const next = { ...d };
+      delete next[m.id];
+      return next;
+    });
+    if (Number.isFinite(n) && n >= 0 && n !== m.stock) {
+      dispatch({ type: "SET_STOCK", id: m.id, stock: n });
+    }
+  };
   return jsxDEV("div", {
     className: "settings",
     children: [
       jsxDEV("div", {
         className: "view-head",
-        children: jsxDEV("div", {
-          children: [
-            jsxDEV("h1", { children: "Inventory" }),
-            jsxDEV("p", { className: "hint", children: "Current stock for every menu item." })
-          ]
-        })
+        children: [
+          jsxDEV("div", {
+            children: [
+              jsxDEV("h1", { children: "Inventory" }),
+              jsxDEV("p", { className: "hint", children: "Stock moves automatically as orders go in and out; adjust it here for deliveries or corrections." })
+            ]
+          }),
+          jsxDEV("div", { className: "inv-summary", children: [
+            jsxDEV("span", { className: "inv-chip", children: [jsxDEV(PackageCheck, { size: 14 }), `${total} items`] }),
+            jsxDEV("span", { className: "inv-chip low", children: [jsxDEV(AlertTriangle, { size: 14 }), `${lowCount} low`] }),
+            jsxDEV("span", { className: "inv-chip out", children: [jsxDEV(PackageX2, { size: 14 }), `${outCount} out`] })
+          ] })
+        ]
       }),
-      jsxDEV("section", {
-        className: "panel",
-        children: jsxDEV("div", {
-          className: "panel-list",
-          children: state.menu.map((m) => {
-            const b = stockBadgeInfo(m.stock);
-            return jsxDEV("div", {
-              className: "pl-row",
-              children: [
-                jsxDEV("span", { className: "pl-main", children: jsxDEV("span", { className: "pl-name", children: m.name }) }),
-                jsxDEV("span", { className: `badge ${b.cls}`, children: b.label }),
-                jsxDEV("span", { className: "pl-stock", "data-kind": b.cls, children: m.stock })
-              ]
-            }, m.id);
+      jsxDEV("div", { className: "inv-toolbar", children: [
+        jsxDEV("label", { className: "inv-search", children: [
+          jsxDEV(Search2, { size: 16 }),
+          jsxDEV("input", {
+            placeholder: "Search items\u2026",
+            value: query,
+            onChange: (e) => setQuery(e.target.value)
           })
-        })
-      })
+        ] }),
+        jsxDEV("div", { className: "inv-filters", children: FILTERS.map(
+          (f) => jsxDEV("button", {
+            className: `inv-filter ${filter === f.key ? "active" : ""}`,
+            onClick: () => setFilter(f.key),
+            children: f.label
+          }, f.key)
+        ) })
+      ] }),
+      groups.length === 0 ? jsxDEV("div", { className: "kds-empty", children: [
+        jsxDEV(PackageX2, { size: 36 }),
+        jsxDEV("p", { children: "No items match." })
+      ] }) : groups.map(
+        (g) => jsxDEV("section", { className: "panel", children: [
+          jsxDEV("h2", { className: "zone-title", children: g.cat }),
+          jsxDEV("div", { className: "panel-list", children: g.items.map((m) => {
+            const b = stockBadgeInfo(m.stock);
+            const value = draft[m.id] !== void 0 ? draft[m.id] : String(m.stock);
+            return jsxDEV("div", { className: "pl-row inv-row", children: [
+              jsxDEV("span", { className: "pl-main", children: jsxDEV("span", { className: "pl-name", children: m.name }) }),
+              jsxDEV("span", { className: `badge ${b.cls}`, children: b.label }),
+              jsxDEV("div", { className: "inv-stepper", children: [
+                jsxDEV("button", { onClick: () => bump(m, -1), disabled: m.stock <= 0, title: "-1", children: jsxDEV(Minus2, { size: 14 }) }),
+                jsxDEV("input", {
+                  className: "inv-input",
+                  inputMode: "numeric",
+                  value,
+                  onChange: (e) => setDraft((d) => ({ ...d, [m.id]: e.target.value.replace(/[^0-9]/g, "") })),
+                  onBlur: () => commitDraft(m),
+                  onKeyDown: (e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }
+                }),
+                jsxDEV("button", { onClick: () => bump(m, 1), title: "+1", children: jsxDEV(Plus3, { size: 14 }) })
+              ] })
+            ] }, m.id);
+          }) })
+        ] }, g.cat)
+      )
     ]
   });
 }
@@ -2888,7 +2960,7 @@ function getSavedTheme() {
   return document.documentElement.getAttribute("data-theme") || "dark";
 }
 function useClock() {
-  const [now, setNow] = useState7(() => /* @__PURE__ */ new Date());
+  const [now, setNow] = useState8(() => /* @__PURE__ */ new Date());
   useEffect7(() => {
     const id = setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
     return () => clearInterval(id);
@@ -2969,7 +3041,7 @@ function Header({ view, setView, theme, setTheme }) {
   const activeOrder = state.orders.find((o) => o.id === state.activeOrderId && !o.paid);
   const liveCount = Object.values(ordersByTable).filter((o) => o.items.length && o.status !== "new").length;
   const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const [role, setRole] = useState7(() => getDeviceRole());
+  const [role, setRole] = useState8(() => getDeviceRole());
   const handleRoleChange = (next) => {
     setDeviceRole(next);
     setRole(next);
@@ -3101,8 +3173,8 @@ function cap3(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function Shell() {
-  const [view, setView] = useState7("floorplan");
-  const [theme, setTheme] = useState7(getSavedTheme);
+  const [view, setView] = useState8("floorplan");
+  const [theme, setTheme] = useState8(getSavedTheme);
   useEffect7(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try {
