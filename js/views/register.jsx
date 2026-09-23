@@ -32,6 +32,7 @@ function RegisterView() {
   const menuInStock = state.menu.filter((m) => m.category === activeCat && m.stock > 0);
   void menuInStock;
   const canEdit = !!order && order.status === "new";
+  const menuStockOf = (menuId) => state.menu.find((m) => m.id === menuId)?.stock ?? 0;
   const subtitle = order ? `${table?.name || "Unassigned"} \xB7 taken by ${order.staff}` : "Select a table from the Floor Plan to start";
   return /* @__PURE__ */ jsxDEV("div", { className: "register", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
@@ -411,7 +412,7 @@ function TicketPanel({ order, canEdit }) {
                 /* @__PURE__ */ jsxDEV("div", { className: "qty", children: [
                   /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1 || !canEdit, children: /* @__PURE__ */ jsxDEV(Minus, { size: 14 }, void 0, false, {}, this) }, void 0, false, {}, this),
                   /* @__PURE__ */ jsxDEV("span", { children: it.qty }, void 0, false, {}, this),
-                  /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), disabled: !canEdit, children: /* @__PURE__ */ jsxDEV(Plus, { size: 14 }, void 0, false, {}, this) }, void 0, false, {}, this)
+                  /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), disabled: !canEdit || menuStockOf(it.menuId) <= 0, title: !canEdit ? "" : menuStockOf(it.menuId) <= 0 ? "Sin stock" : "", children: /* @__PURE__ */ jsxDEV(Plus, { size: 14 }, void 0, false, {}, this) }, void 0, false, {}, this)
                 ] }, void 0, true, {}, this),
                 /* @__PURE__ */ jsxDEV(
                   "input",
@@ -427,7 +428,7 @@ function TicketPanel({ order, canEdit }) {
                   {},
                   this
                 ),
-                /* @__PURE__ */ jsxDEV("button", { className: "remove", disabled: !canEdit, onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {}, this) }, void 0, false, {}, this)
+                /* @__PURE__ */ jsxDEV("button", { className: "remove", title: "Eliminar (devuelve al stock)", onClick: () => removeItem(dispatch, order, idx, it), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {}, this) }, void 0, false, {}, this)
               ] }, void 0, true, {}, this),
               seatCount > 0 && /* @__PURE__ */ jsxDEV("label", { className: "seat-assign", children: [
                 "Asiento",
@@ -654,7 +655,7 @@ function SaleStrip({ order }) {
 // They stay visible in the cart so the waiter can still fire ("Sale") a
 // category on them, e.g. after adding more items in a newer comanda.
 function OrderHistory({ order }) {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const [open, setOpen] = useState({});
   const tableOrders = state.orders
     .filter((o) => o.tableId === order.tableId && !o.paid)
@@ -693,7 +694,13 @@ function OrderHistory({ order }) {
                     it.seat != null && jsxDEV("span", { className: "history-meta", children: `Asiento ${it.seat}` }),
                     it.note && jsxDEV("span", { className: "history-meta", children: it.note }),
                     it.ready && jsxDEV("span", { className: "ti-ready", children: "\u2713 Listo" }),
-                    it.sale && jsxDEV("span", { className: "k-sale", children: "SALE" })
+                    it.sale && jsxDEV("span", { className: "k-sale", children: "SALE" }),
+                    jsxDEV("button", {
+                      className: "remove history-remove",
+                      title: "Eliminar (devuelve al stock)",
+                      onClick: () => removeItem(dispatch, o, i, it),
+                      children: jsxDEV(Trash2, { size: 14 })
+                    })
                   ]
                 }, i)
               )
@@ -705,7 +712,18 @@ function OrderHistory({ order }) {
   });
 }
 function setQty(dispatch, order, index, qty) {
-  dispatch({ type: "SET_QTY", orderId: order.id, index, qty: Math.max(0, qty) });
+  dispatch({ type: "SET_QTY", orderId: order.id, index, qty: Math.max(1, qty) });
+}
+// Always available, even after the line already went to the kitchen/bar —
+// a mistyped comanda needs to be fixable and its stock returned regardless
+// of status. Confirms first once it's out of the waiter's easy "new order"
+// window, since removing it also pulls it off any ticket already printed.
+function removeItem(dispatch, order, index, item) {
+  if (order.status !== "new") {
+    const ok = window.confirm(`Quitar ${item.qty}\u00d7 ${item.name}? Ya se envi\u00f3 a cocina/barra.`);
+    if (!ok) return;
+  }
+  dispatch({ type: "REMOVE_ITEM", orderId: order.id, index });
 }
 function cap(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
