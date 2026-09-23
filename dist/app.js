@@ -66,6 +66,21 @@ async function deleteMenuImageByUrl(url) {
 // js/store.js
 import { jsx as jsx2 } from "react/jsx-runtime";
 var LOW_STOCK = 5;
+var ACTIVE_ORDER_KEY = "tetra:activeOrderId";
+function getStoredActiveOrderId() {
+  try {
+    return window.localStorage.getItem(ACTIVE_ORDER_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+function setStoredActiveOrderId(id) {
+  try {
+    if (id) window.localStorage.setItem(ACTIVE_ORDER_KEY, id);
+    else window.localStorage.removeItem(ACTIVE_ORDER_KEY);
+  } catch {
+  }
+}
 var EMPTY_STATE = {
   staff: [],
   categories: [],
@@ -185,6 +200,8 @@ async function fetchAll() {
   });
   const appRow = appStateRows && appStateRows[0] || {};
   const staffNames = (staffRows || []).map((s) => s.name);
+  const storedActive = getStoredActiveOrderId();
+  const activeOrderId = storedActive && orders.some((o) => o.id === storedActive && !o.paid) ? storedActive : null;
   return {
     staff: staffNames,
     categories: (categoryRows || []).map((c) => c.name),
@@ -192,7 +209,7 @@ async function fetchAll() {
     tables: sortTables(tableRows || []),
     orders,
     currentStaff: appRow.current_staff || staffNames[0] || "",
-    activeOrderId: appRow.active_order_id || null,
+    activeOrderId,
     // "sent": ticket timers start the moment the waiter sends the order.
     // "preparing": ticket timers start once that station actually marks the
     // ticket as preparing (kitchen_started_at / bar_started_at below).
@@ -547,14 +564,10 @@ async function runAction(action, state) {
         bill_requested: false,
         paid: false
       });
-      await supabase.from("app_state").update({ active_order_id: id }).eq("id", 1);
       return;
     }
     case "SELECT_ORDER":
-      await supabase.from("app_state").update({ active_order_id: action.orderId }).eq("id", 1);
-      return;
     case "SET_ACTIVE_TABLE":
-      await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
       return;
     case "ADD_TO_ORDER": {
       const seat = action.seat ?? null;
@@ -691,9 +704,6 @@ async function runAction(action, state) {
       return;
     case "PAY": {
       await supabase.from("orders").update({ paid: true, status: "paid" }).eq("id", action.orderId);
-      if (state.activeOrderId === action.orderId) {
-        await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
-      }
       return;
     }
     case "DISMISS_ORDER": {
@@ -711,9 +721,6 @@ async function runAction(action, state) {
         if (itemsErr) throw itemsErr;
         const { error: orderErr } = await supabase.from("orders").delete().eq("id", action.orderId);
         if (orderErr) throw orderErr;
-        if (state.activeOrderId === action.orderId) {
-          await supabase.from("app_state").update({ active_order_id: null }).eq("id", 1);
-        }
       }
       return;
     }
@@ -746,6 +753,9 @@ function StoreProvider({ children }) {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     refreshTimer.current = setTimeout(refreshNow, 150);
   }, [refreshNow]);
+  useEffect(() => {
+    setStoredActiveOrderId(state.activeOrderId);
+  }, [state.activeOrderId]);
   useEffect(() => {
     refreshNow();
     const channel = supabase.channel("tetra-sync").on("postgres_changes", { event: "*", schema: "public", table: "staff" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "tables" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "app_state" }, scheduleRefresh).on("postgres_changes", { event: "*", schema: "public", table: "categories" }, scheduleRefresh).subscribe();
