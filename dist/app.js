@@ -1149,6 +1149,7 @@ function RegisterView() {
   }, [state.menu, activeCat, query]);
   const menuInStock = state.menu.filter((m) => m.category === activeCat && m.stock > 0);
   const canEdit = !!order && order.status === "new";
+  const menuStockOf2 = (menuId) => state.menu.find((m) => m.id === menuId)?.stock ?? 0;
   const subtitle = order ? `${table?.name || "Unassigned"} \xB7 taken by ${order.staff}` : "Select a table from the Floor Plan to start";
   return /* @__PURE__ */ jsxDEV("div", { className: "register", children: [
     /* @__PURE__ */ jsxDEV("div", { className: "view-head", children: /* @__PURE__ */ jsxDEV("div", { children: [
@@ -1524,7 +1525,7 @@ function TicketPanel({ order, canEdit }) {
                 /* @__PURE__ */ jsxDEV("div", { className: "qty", children: [
                   /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty - 1), disabled: it.qty <= 1 || !canEdit, children: /* @__PURE__ */ jsxDEV(Minus, { size: 14 }, void 0, false, {}, this) }, void 0, false, {}, this),
                   /* @__PURE__ */ jsxDEV("span", { children: it.qty }, void 0, false, {}, this),
-                  /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), disabled: !canEdit, children: /* @__PURE__ */ jsxDEV(Plus, { size: 14 }, void 0, false, {}, this) }, void 0, false, {}, this)
+                  /* @__PURE__ */ jsxDEV("button", { onClick: () => setQty(dispatch, order, idx, it.qty + 1), disabled: !canEdit || menuStockOf(it.menuId) <= 0, title: !canEdit ? "" : menuStockOf(it.menuId) <= 0 ? "Sin stock" : "", children: /* @__PURE__ */ jsxDEV(Plus, { size: 14 }, void 0, false, {}, this) }, void 0, false, {}, this)
                 ] }, void 0, true, {}, this),
                 /* @__PURE__ */ jsxDEV(
                   "input",
@@ -1540,7 +1541,7 @@ function TicketPanel({ order, canEdit }) {
                   {},
                   this
                 ),
-                /* @__PURE__ */ jsxDEV("button", { className: "remove", disabled: !canEdit, onClick: () => setQty(dispatch, order, idx, 0), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {}, this) }, void 0, false, {}, this)
+                /* @__PURE__ */ jsxDEV("button", { className: "remove", title: "Eliminar (devuelve al stock)", onClick: () => removeItem(dispatch, order, idx, it), children: /* @__PURE__ */ jsxDEV(Trash2, { size: 15 }, void 0, false, {}, this) }, void 0, false, {}, this)
               ] }, void 0, true, {}, this),
               seatCount > 0 && /* @__PURE__ */ jsxDEV("label", { className: "seat-assign", children: [
                 "Asiento",
@@ -1762,7 +1763,7 @@ function SaleStrip({ order }) {
   });
 }
 function OrderHistory({ order }) {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const [open, setOpen] = useState3({});
   const tableOrders = state.orders.filter((o) => o.tableId === order.tableId && !o.paid).sort((a, b) => a.createdAt - b.createdAt);
   const numberOf = (id) => tableOrders.findIndex((o) => o.id === id) + 1;
@@ -1799,7 +1800,13 @@ function OrderHistory({ order }) {
                     it.seat != null && jsxDEV("span", { className: "history-meta", children: `Asiento ${it.seat}` }),
                     it.note && jsxDEV("span", { className: "history-meta", children: it.note }),
                     it.ready && jsxDEV("span", { className: "ti-ready", children: "\u2713 Listo" }),
-                    it.sale && jsxDEV("span", { className: "k-sale", children: "SALE" })
+                    it.sale && jsxDEV("span", { className: "k-sale", children: "SALE" }),
+                    jsxDEV("button", {
+                      className: "remove history-remove",
+                      title: "Eliminar (devuelve al stock)",
+                      onClick: () => removeItem(dispatch, o, i, it),
+                      children: jsxDEV(Trash2, { size: 14 })
+                    })
                   ]
                 }, i)
               )
@@ -1811,7 +1818,14 @@ function OrderHistory({ order }) {
   });
 }
 function setQty(dispatch, order, index, qty) {
-  dispatch({ type: "SET_QTY", orderId: order.id, index, qty: Math.max(0, qty) });
+  dispatch({ type: "SET_QTY", orderId: order.id, index, qty: Math.max(1, qty) });
+}
+function removeItem(dispatch, order, index, item) {
+  if (order.status !== "new") {
+    const ok = window.confirm(`Quitar ${item.qty}\xD7 ${item.name}? Ya se envi\xF3 a cocina/barra.`);
+    if (!ok) return;
+  }
+  dispatch({ type: "REMOVE_ITEM", orderId: order.id, index });
 }
 function cap2(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
