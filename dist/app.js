@@ -271,13 +271,38 @@ function applyOptimistic(state, action) {
         menu: next.menu.map((m) => m.id === action.menuId ? { ...m, stock: Math.max(0, m.stock - 1) } : m)
       };
     }
-    case "SET_QTY":
-      return withOrder(state, action.orderId, (o) => {
-        const item = o.items[action.index];
-        if (!item) return o;
-        const items = action.qty <= 0 ? o.items.filter((_, i) => i !== action.index) : o.items.map((it, i) => i === action.index ? { ...it, qty: action.qty } : it);
-        return { ...o, items };
-      });
+    case "SET_QTY": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return state;
+      const qty = Math.max(1, action.qty);
+      const delta = qty - item.qty;
+      const next = withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.map((it, i) => i === action.index ? { ...it, qty } : it)
+      }));
+      if (delta === 0) return next;
+      return {
+        ...next,
+        menu: next.menu.map((m) => m.id === item.menuId ? { ...m, stock: Math.max(0, m.stock - delta) } : m)
+      };
+    }
+    // Removes a line entirely and returns its full quantity to stock — used
+    // both for the qty-stepper's trash icon and to undo a waiter's mistyped
+    // comanda line, whether or not it was already sent to the kitchen/bar.
+    case "REMOVE_ITEM": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return state;
+      const next = withOrder(state, action.orderId, (o) => ({
+        ...o,
+        items: o.items.filter((_, i) => i !== action.index)
+      }));
+      return {
+        ...next,
+        menu: next.menu.map((m) => m.id === item.menuId ? { ...m, stock: m.stock + item.qty } : m)
+      };
+    }
     case "SET_NOTE":
       return withOrder(state, action.orderId, (o) => ({
         ...o,
@@ -288,6 +313,14 @@ function applyOptimistic(state, action) {
         ...o,
         items: o.items.map((it, i) => i === action.index ? { ...it, seat: action.seat ?? null } : it)
       }));
+    // Quick restock/correction from the Inventory tab — separate from the
+    // full menu-item editor in Admin, and applied instantly like the rest
+    // of the item-level actions instead of waiting for the next refresh.
+    case "SET_STOCK":
+      return {
+        ...state,
+        menu: state.menu.map((m) => m.id === action.id ? { ...m, stock: Math.max(0, action.stock) } : m)
+      };
     case "TOGGLE_ITEM_DONE":
       return withOrder(state, action.orderId, (o) => ({
         ...o,
@@ -410,6 +443,9 @@ async function runAction(action, state) {
     }
     case "DELETE_CATEGORY":
       await supabase.from("categories").delete().eq("name", action.name);
+      return;
+    case "SET_STOCK":
+      await supabase.from("menu_items").update({ stock: Math.max(0, action.stock) }).eq("id", action.id);
       return;
     case "ADD_ITEM":
       await supabase.from("menu_items").insert({
@@ -554,14 +590,34 @@ async function runAction(action, state) {
       const item = order?.items[action.index];
       if (!item) return;
       const seat = item.seat ?? null;
-      if (action.qty <= 0) {
-        let q = supabase.from("order_items").delete().eq("order_id", action.orderId).eq("menu_id", item.menuId);
-        q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
-        await q;
-      } else {
-        let q = supabase.from("order_items").update({ qty: action.qty }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
-        q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
-        await q;
+      const qty = Math.max(1, action.qty);
+      let q = supabase.from("order_items").update({ qty }).eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+      const { error } = await q;
+      if (error) throw error;
+      const delta = qty - item.qty;
+      if (delta !== 0) {
+        const menuItem = state.menu.find((m) => m.id === item.menuId);
+        if (menuItem) {
+          const { error: stockErr } = await supabase.from("menu_items").update({ stock: Math.max(0, menuItem.stock - delta) }).eq("id", item.menuId);
+          if (stockErr) throw stockErr;
+        }
+      }
+      return;
+    }
+    case "REMOVE_ITEM": {
+      const order = state.orders.find((o) => o.id === action.orderId);
+      const item = order?.items[action.index];
+      if (!item) return;
+      const seat = item.seat ?? null;
+      let q = supabase.from("order_items").delete().eq("order_id", action.orderId).eq("menu_id", item.menuId);
+      q = seat === null ? q.is("seat", null) : q.eq("seat", seat);
+      const { error } = await q;
+      if (error) throw error;
+      const menuItem = state.menu.find((m) => m.id === item.menuId);
+      if (menuItem) {
+        const { error: stockErr } = await supabase.from("menu_items").update({ stock: menuItem.stock + item.qty }).eq("id", item.menuId);
+        if (stockErr) throw stockErr;
       }
       return;
     }
