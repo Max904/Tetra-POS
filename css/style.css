@@ -1652,3 +1652,115 @@ html[data-theme="light"] .kds-card.over {
     display: none;
   }
 }
+
+/* ---- Inventory tab redesign ---- */
+.inv-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-self: flex-start;
+}
+.inv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.inv-chip.low {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.inv-chip.out {
+  color: var(--red);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.inv-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.inv-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 220px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.inv-search input {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  flex: 1;
+  color: var(--text);
+}
+.inv-filters {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.inv-filter {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+}
+.inv-filter.active {
+  background: var(--panel);
+  color: var(--accent-2);
+}
+.inv-row {
+  gap: 10px;
+}
+.inv-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.inv-stepper button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.inv-stepper button:disabled {
+  opacity: 0.35;
+}
+.inv-input {
+  width: 48px;
+  padding: 5px 0;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 480px) {
+  .inv-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+/* ---- delete button inside comanda history ---- */
+.history-remove {
+  margin-left: auto;
+}
